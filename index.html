@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manajemen Keuangan Cerdas</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 pb-12">
+
+    <!-- Header / Navbar -->
+    <header class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white shadow-lg">
+        <div class="max-w-6xl mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-wallet me-2"></i>FinTracker Personal
+                    </h1>
+                    <p class="text-emerald-100 text-sm mt-1">Sistem Alokasi Kas, Kalender Jatah & Sapu Bersih Sisa Uang Harian</p>
+                </div>
+                <div class="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20">
+                    <i class="fa-solid fa-calendar-day text-emerald-300"></i>
+                    <span id="current-date-display" class="font-medium text-sm">-- ---- ----</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- KIRI: Summary Cards & Input Form (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6">
+
+            <!-- Card Ringkasan Saldo -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-teal-500"></i> Ringkasan Alokasi Kas
+                </h2>
+
+                <div class="space-y-3">
+                    <!-- Total Kas Masuk -->
+                    <div class="p-3 bg-slate-50 rounded-xl flex justify-between items-center">
+                        <div>
+                            <p class="text-[11px] text-slate-500 font-medium">Total Kas Masuk</p>
+                            <p id="stat-total-in" class="text-base font-bold text-slate-700">Rp 0</p>
+                        </div>
+                        <span class="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-arrow-down-left"></i>
+                        </span>
+                    </div>
+
+                    <!-- Saldo Tabungan -->
+                    <div class="p-3 bg-emerald-50 rounded-xl flex justify-between items-center border border-emerald-100">
+                        <div>
+                            <p class="text-[11px] text-emerald-700 font-medium">Uang Tabungan</p>
+                            <p id="stat-savings" class="text-base font-bold text-emerald-800">Rp 0</p>
+                        </div>
+                        <span class="w-8 h-8 bg-emerald-200 text-emerald-700 rounded-lg flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-piggy-bank"></i>
+                        </span>
+                    </div>
+
+                    <!-- Saldo Pos Tagihan -->
+                    <div class="p-3 bg-rose-50 rounded-xl flex justify-between items-center border border-rose-100">
+                        <div>
+                            <p class="text-[11px] text-rose-700 font-medium">Dana Tagihan</p>
+                            <p id="stat-bills" class="text-base font-bold text-rose-800">Rp 0</p>
+                        </div>
+                        <span class="w-8 h-8 bg-rose-200 text-rose-700 rounded-lg flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                        </span>
+                    </div>
+
+                    <!-- Jatah Transportasi Tersedia -->
+                    <div class="p-3 bg-amber-50 rounded-xl flex justify-between items-center border border-amber-100">
+                        <div>
+                            <p class="text-[11px] text-amber-700 font-medium">Jatah Transport Kerja</p>
+                            <p id="stat-transport" class="text-base font-bold text-amber-800">Rp 0</p>
+                        </div>
+                        <span class="w-8 h-8 bg-amber-200 text-amber-700 rounded-lg flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-motorcycle"></i>
+                        </span>
+                    </div>
+
+                    <!-- Jatah Harian Hari Ini -->
+                    <div class="p-3 bg-indigo-50 rounded-xl flex justify-between items-center border border-indigo-100">
+                        <div>
+                            <p class="text-[11px] text-indigo-700 font-medium">Batas Harian (Hari Ini)</p>
+                            <p id="stat-daily-limit" class="text-base font-bold text-indigo-800">Rp 0</p>
+                        </div>
+                        <span class="w-8 h-8 bg-indigo-200 text-indigo-700 rounded-lg flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-utensils"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Form Input: Transaksi -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div class="flex border-b border-slate-100 mb-4">
+                    <button id="btn-tab-in" onclick="switchTab('in')" class="flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition">
+                        <i class="fa-solid fa-plus-circle me-1"></i> Tambah Masuk
+                    </button>
+                    <button id="btn-tab-out" onclick="switchTab('out')" class="flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition">
+                        <i class="fa-solid fa-minus-circle me-1"></i> Catat Keluar
+                    </button>
+                </div>
+
+                <!-- Form Pemasukan -->
+                <form id="form-income" class="space-y-4" onsubmit="handleAddIncome(event)">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Sumber Uang Masuk</label>
+                        <select id="inc-source" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            <option value="Gaji">Gaji Utama</option>
+                            <option value="Bonus">Bonus Kerja</option>
+                            <option value="Uang KIP">Uang KIP / Beasiswa</option>
+                            <option value="Lainnya">Lain-lain</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal (Rp)</label>
+                        <input type="number" id="inc-amount" placeholder="Contoh: 2000000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+
+                    <!-- Sistem Pembagian Persentase (4 Pos Utama) -->
+                    <div class="p-3 bg-teal-50/50 rounded-xl border border-teal-100 space-y-2">
+                        <span class="text-xs font-bold text-teal-800 block">Aturan Pembagian Otomatis:</span>
+                        <div class="grid grid-cols-4 gap-1 text-center text-xs">
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <span class="text-slate-400 block text-[9px] truncate">Tabungan</span>
+                                <input type="number" id="pct-savings" value="40" class="w-full text-center font-bold text-emerald-600 bg-transparent focus:outline-none text-xs" min="0" max="100" onchange="validatePercentage()">
+                                <span class="text-[9px] text-slate-400">%</span>
+                            </div>
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <span class="text-slate-400 block text-[9px] truncate">Harian</span>
+                                <input type="number" id="pct-daily" value="35" class="w-full text-center font-bold text-indigo-600 bg-transparent focus:outline-none text-xs" min="0" max="100" onchange="validatePercentage()">
+                                <span class="text-[9px] text-slate-400">%</span>
+                            </div>
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <span class="text-slate-400 block text-[9px] truncate">Transport</span>
+                                <input type="number" id="pct-transport" value="15" class="w-full text-center font-bold text-amber-600 bg-transparent focus:outline-none text-xs" min="0" max="100" onchange="validatePercentage()">
+                                <span class="text-[9px] text-slate-400">%</span>
+                            </div>
+                            <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <span class="text-slate-400 block text-[9px] truncate">Tagihan</span>
+                                <input type="number" id="pct-bills" value="10" class="w-full text-center font-bold text-rose-600 bg-transparent focus:outline-none text-xs" min="0" max="100" onchange="validatePercentage()">
+                                <span class="text-[9px] text-slate-400">%</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center text-[10px]">
+                            <span class="text-slate-500 italic">*Harus total 100%</span>
+                            <span id="pct-total-label" class="font-bold text-emerald-600">Total: 100%</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition text-sm">
+                        Simpan & Alokasikan
+                    </button>
+                </form>
+
+                <!-- Form Pengeluaran -->
+                <form id="form-expense" class="space-y-4 hidden" onsubmit="handleAddExpense(event)">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Transaksi</label>
+                        <input type="date" id="exp-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Pengeluaran</label>
+                        <select id="exp-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="MakanJajan">Makan / Jajan Harian</option>
+                            <option value="Transportasi">Transportasi Kerja</option>
+                            <option value="SelfReward">Self Reward / Liburan (Mendadak)</option>
+                            <option value="Tagihan">Bayar Tagihan (Listrik, Wifi, dll)</option>
+                            <option value="Lainnya">Pengeluaran Lainnya</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal (Rp)</label>
+                        <input type="number" id="exp-amount" placeholder="Contoh: 26000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Sumber Dana Pengeluaran</label>
+                        <select id="exp-source-fund" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                            <option value="auto">Potong Otomatis Berdasarkan Pos</option>
+                            <option value="savings">Potong Langsung Dari Tabungan</option>
+                            <option value="dailyPool">Potong Dari Kas Harian</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan</label>
+                        <input type="text" id="exp-note" placeholder="Misal: Nasi Ayam Siang (Sisa 9k)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                    </div>
+
+                    <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition text-sm">
+                        Catat Pengeluaran
+                    </button>
+                </form>
+            </div>
+
+            <!-- Kontrol Aksi Pemindahan Dana -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-3">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Aksi Cepat Pemindahan Dana</h3>
+                
+                <button onclick="transferTransportToSavings()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-semibold py-2 px-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-piggy-bank"></i> Pindahkan Sisa Transport ke Tabungan
+                </button>
+
+                <button onclick="transferBillsToSavings()" class="w-full bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-semibold py-2 px-3 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-piggy-bank"></i> Pindahkan Sisa Dana Tagihan ke Tabungan
+                </button>
+            </div>
+
+        </section>
+
+        <!-- KANAN: Kalender Jatah Harian & Log Transaksi (8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-6">
+
+            <!-- Banner Peringatan Keborosan / Status -->
+            <div id="alert-banner" class="hidden rounded-2xl p-4 transition-all duration-300">
+                <div class="flex items-start gap-3">
+                    <div id="alert-icon" class="text-xl"></div>
+                    <div>
+                        <h4 id="alert-title" class="font-bold text-sm"></h4>
+                        <p id="alert-desc" class="text-xs mt-0.5"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kalender Interaktif: Jatah Harian & Agenda Self Reward -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-check text-indigo-600"></i> Kalender Jatah Harian & Self Reward
+                        </h2>
+                        <p class="text-xs text-slate-500">Semua sisa pecahan jatah harian (5k, 3k, 9k, dll) akan terhitung otomatis saat disapu bersih ke Tabungan.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+                        <span id="calendar-month-year" class="text-xs font-bold text-slate-700 min-w-[100px] text-center">-- ----</span>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Modul Info Aturan Kalender -->
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-4 flex flex-wrap gap-4 text-xs">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                        <span class="text-slate-700">Jatah Diambil</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                        <span class="text-slate-700">Ada Sisa Pecahan Uang</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+                        <span class="text-slate-700">100% Utuh Terakumulasi</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-purple-600 inline-block"></span>
+                        <span class="text-slate-700">Self Reward / Liburan</span>
+                    </div>
+                </div>
+
+                <!-- Grid Kalender -->
+                <div class="grid grid-cols-7 gap-1.5 text-center mb-2">
+                    <span class="text-[11px] font-bold text-slate-400">Min</span>
+                    <span class="text-[11px] font-bold text-slate-400">Sen</span>
+                    <span class="text-[11px] font-bold text-slate-400">Sel</span>
+                    <span class="text-[11px] font-bold text-slate-400">Rab</span>
+                    <span class="text-[11px] font-bold text-slate-400">Kam</span>
+                    <span class="text-[11px] font-bold text-slate-400">Jum</span>
+                    <span class="text-[11px] font-bold text-slate-400">Sab</span>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                    <!-- Dynamic Days -->
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <div class="text-xs text-slate-600">
+                        Total Sisa Hemat Bulan Ini (Termasuk Uang Kembalian Pecahan): <br>
+                        <span id="unclaimed-total" class="font-bold text-emerald-600 text-sm">Rp 0</span>
+                    </div>
+                    <button onclick="sweepUnclaimedToSavings()" class="text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3.5 py-2 rounded-xl transition shadow-sm">
+                        <i class="fa-solid fa-broom me-1.5"></i> Sapu Bersih Seluruh Sisa ke Tabungan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Daftar Agenda Self Reward Terdaftar -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-plane-departure text-purple-600"></i> Daftar Agenda Self Reward / Liburan
+                    </h3>
+                    <button onclick="openAddRewardModal()" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                        <i class="fa-solid fa-plus me-1"></i> Tambah Agenda
+                    </button>
+                </div>
+                <div id="reward-list" class="space-y-2 max-h-[180px] overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Dynamic list of self reward events -->
+                </div>
+            </div>
+
+            <!-- Riwayat Transaksi -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-slate-500"></i> Riwayat Transaksi
+                    </h3>
+                    <button onclick="clearAllData()" class="text-xs text-rose-500 hover:underline">Reset Data</button>
+                </div>
+
+                <div class="overflow-y-auto max-h-[250px] custom-scrollbar space-y-2 pr-1" id="transaction-history">
+                    <!-- History list loaded dynamically -->
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MODAL AKSI KALENDER TANGGAL -->
+    <div id="modal-date-action" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 id="modal-date-title" class="font-bold text-sm text-slate-800">Tanggal: --</h3>
+                <button onclick="closeDateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-3">
+                <button id="btn-modal-toggle-claim" onclick="actionToggleClaim()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-check"></i></span>
+                    <div>
+                        <p id="label-modal-claim" class="text-xs font-bold text-slate-700">Klaim Jatah Harian (35k)</p>
+                        <p class="text-[10px] text-slate-500">Tandai bahwa jatah harian diambil di hari ini</p>
+                    </div>
+                </button>
+
+                <button onclick="actionOpenRewardFromDate()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-gift"></i></span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-700">Tambah Self Reward / Liburan</p>
+                        <p class="text-[10px] text-slate-500">Catat agenda bepergian/liburan mendadak di tanggal ini</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FORM SELF REWARD / LIBURAN -->
+    <div id="modal-reward-form" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-plane-departure text-purple-600"></i> Agenda Self Reward / Liburan
+                </h3>
+                <button onclick="closeRewardModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="handleSaveRewardEvent(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Agenda / Kegiatan</label>
+                    <input type="text" id="rew-title" placeholder="Contoh: Trip Mendadak Ke Pantai / Nonton Bioskop" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal</label>
+                        <input type="date" id="rew-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estimasi / Biaya (Rp)</label>
+                        <input type="number" id="rew-amount" placeholder="Contoh: 150000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tipe Agenda</label>
+                    <select id="rew-type" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="Mendadak">⚡ Liburan / Self Reward Mendadak</option>
+                        <option value="Terencana">📅 Terencana Jauh Hari</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Sumber Uang Pengeluaran</label>
+                    <select id="rew-source" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="savings">Potong Langsung Dari Tabungan</option>
+                        <option value="dailyPool">Potong Dari Uang Kas Harian</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeRewardModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-2.5 rounded-xl transition">Batal</button>
+                    <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-2.5 rounded-xl shadow-md transition">Simpan Agenda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script App Logic -->
+    <script>
+        // State Manajemen Utama
+        let state = {
+            transactions: [],
+            claimedDays: {}, // format: 'YYYY-MM-DD': true
+            rewardEvents: [], // Array agenda liburan: {id, title, date, amount, type, source}
+            sweptDays: {}, // format: 'YYYY-MM-DD': true (Untuk menandai tanggal yang sudah disapu bersih)
+            balances: {
+                totalIncome: 0,
+                savings: 0,
+                transport: 0,
+                bills: 0,    
+                dailyPool: 0 
+            },
+            currentMonth: new Date().getMonth(),
+            currentYear: new Date().getFullYear(),
+            defaultDailyAllowance: 35000,
+            selectedDateKey: null 
+        };
+
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+        // Init App
+        window.onload = function() {
+            loadState();
+            initDateDisplay();
+            validatePercentage();
+            // Set default exp-date ke hari ini
+            document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+            renderAll();
+        };
+
+        function initDateDisplay() {
+            const today = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date-display').innerText = today.toLocaleDateString('id-ID', options);
+        }
+
+        // Validasi Total Persentase 4 Pos
+        function validatePercentage() {
+            const s = parseFloat(document.getElementById('pct-savings').value) || 0;
+            const d = parseFloat(document.getElementById('pct-daily').value) || 0;
+            const t = parseFloat(document.getElementById('pct-transport').value) || 0;
+            const b = parseFloat(document.getElementById('pct-bills').value) || 0;
+            
+            const total = s + d + t + b;
+            const label = document.getElementById('pct-total-label');
+            label.innerText = `Total: ${total}%`;
+            
+            if (total === 100) {
+                label.className = "font-bold text-emerald-600";
+            } else {
+                label.className = "font-bold text-rose-600";
+            }
+        }
+
+        // Persistence (Local Storage)
+        function saveState() {
+            localStorage.setItem('fintracker_state_v5', JSON.stringify(state));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('fintracker_state_v5');
+            if (saved) {
+                try {
+                    state = JSON.parse(saved);
+                    if (!state.rewardEvents) state.rewardEvents = [];
+                    if (!state.sweptDays) state.sweptDays = {};
+                    if (state.balances.bills === undefined) state.balances.bills = 0;
+                } catch(e) {
+                    console.error("Gagal load state", e);
+                }
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("Apakah Anda yakin ingin menghapus semua data transaksi, agenda, dan catatan?")) {
+                localStorage.removeItem('fintracker_state_v5');
+                state = {
+                    transactions: [],
+                    claimedDays: {},
+                    rewardEvents: [],
+                    sweptDays: {},
+                    balances: { totalIncome: 0, savings: 0, transport: 0, bills: 0, dailyPool: 0 },
+                    currentMonth: new Date().getMonth(),
+                    currentYear: new Date().getFullYear(),
+                    defaultDailyAllowance: 35000,
+                    selectedDateKey: null
+                };
+                renderAll();
+            }
+        }
+
+        // Helper Format Rupiah
+        function formatRp(val) {
+            return "Rp " + Math.round(val).toLocaleString('id-ID');
+        }
+
+        // Tab Switching Form Input
+        function switchTab(tab) {
+            const btnIn = document.getElementById('btn-tab-in');
+            const btnOut = document.getElementById('btn-tab-out');
+            const formIn = document.getElementById('form-income');
+            const formOut = document.getElementById('form-expense');
+
+            if (tab === 'in') {
+                btnIn.className = "flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition";
+                btnOut.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition";
+                formIn.classList.remove('hidden');
+                formOut.classList.add('hidden');
+            } else {
+                btnOut.className = "flex-1 pb-3 text-sm font-semibold text-rose-600 border-b-2 border-rose-600 transition";
+                btnIn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition";
+                formOut.classList.remove('hidden');
+                formIn.classList.add('hidden');
+            }
+        }
+
+        // --- TAMBAH PEMASUKAN & ALOKASI (4 POS) ---
+        function handleAddIncome(e) {
+            e.preventDefault();
+            const source = document.getElementById('inc-source').value;
+            const amount = parseFloat(document.getElementById('inc-amount').value);
+            
+            const pctSavings = parseFloat(document.getElementById('pct-savings').value) || 0;
+            const pctDaily = parseFloat(document.getElementById('pct-daily').value) || 0;
+            const pctTransport = parseFloat(document.getElementById('pct-transport').value) || 0;
+            const pctBills = parseFloat(document.getElementById('pct-bills').value) || 0;
+
+            if (pctSavings + pctDaily + pctTransport + pctBills !== 100) {
+                alert("Total persentase pembagian harus bernilai 100%!");
+                return;
+            }
+
+            if (!amount || amount <= 0) return;
+
+            const allocSavings = (amount * pctSavings) / 100;
+            const allocDaily = (amount * pctDaily) / 100;
+            const allocTransport = (amount * pctTransport) / 100;
+            const allocBills = (amount * pctBills) / 100;
+
+            state.balances.totalIncome += amount;
+            state.balances.savings += allocSavings;
+            state.balances.dailyPool += allocDaily;
+            state.balances.transport += allocTransport;
+            state.balances.bills += allocBills;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            state.transactions.unshift({
+                id: Date.now(),
+                type: 'IN',
+                title: `Masuk: ${source}`,
+                amount: amount,
+                date: todayStr,
+                note: `Alokasi: Tabungan (${pctSavings}%), Harian (${pctDaily}%), Transport (${pctTransport}%), Tagihan (${pctBills}%)`
+            });
+
+            document.getElementById('inc-amount').value = '';
+            saveState();
+            renderAll();
+        }
+
+        // --- TAMBAH PENGELUARAN ---
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const date = document.getElementById('exp-date').value || new Date().toISOString().split('T')[0];
+            const category = document.getElementById('exp-category').value;
+            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const sourceFund = document.getElementById('exp-source-fund').value;
+            const note = document.getElementById('exp-note').value || category;
+
+            if (!amount || amount <= 0) return;
+
+            // Potong Saldo
+            if (sourceFund === 'savings') {
+                state.balances.savings -= amount;
+            } else if (sourceFund === 'dailyPool') {
+                state.balances.dailyPool -= amount;
+            } else {
+                if (category === 'Transportasi') {
+                    state.balances.transport -= amount;
+                } else if (category === 'MakanJajan') {
+                    state.balances.dailyPool -= amount;
+                    // Otomatis anggap jatah harian diclaim karena ada transaksi makan
+                    state.claimedDays[date] = true;
+                } else if (category === 'Tagihan') {
+                    state.balances.bills -= amount;
+                } else if (category === 'SelfReward') {
+                    if (state.balances.savings >= amount) {
+                        state.balances.savings -= amount;
+                    } else {
+                        state.balances.dailyPool -= amount;
+                    }
+                } else {
+                    if (state.balances.dailyPool >= amount) {
+                        state.balances.dailyPool -= amount;
+                    } else {
+                        state.balances.savings -= amount;
+                    }
+                }
+            }
+
+            state.transactions.unshift({
+                id: Date.now(),
+                type: 'OUT',
+                title: `${category} - ${note}`,
+                amount: amount,
+                date: date,
+                category: category
+            });
+
+            document.getElementById('exp-amount').value = '';
+            document.getElementById('exp-note').value = '';
+            saveState();
+            renderAll();
+        }
+
+        // --- LOGIKA HITUNG SISA UNTUK SAPU BERSIH (TERMASUK KEMBALIAN PECAHAN) ---
+        function calculateDayRemainder(dateStr) {
+            // Hitung total pengeluaran MakanJajan pada tanggal tersebut
+            const dayExpenses = state.transactions
+                .filter(t => t.type === 'OUT' && t.date === dateStr && t.category === 'MakanJajan')
+                .reduce((acc, curr) => acc + curr.amount, 0);
+
+            const isClaimed = !!state.claimedDays[dateStr];
+
+            if (!isClaimed) {
+                // Tidak dicentang sama sekali -> Sisa 100% (35.000)
+                return state.defaultDailyAllowance;
+            } else {
+                // Dicentang -> Sisa adalah 35.000 dikurangi pengeluaran makan/jajan riil
+                const remainder = state.defaultDailyAllowance - dayExpenses;
+                return remainder > 0 ? remainder : 0;
+            }
+        }
+
+        // --- INTERAKSI MODAL KALENDER ---
+        function handleDayClick(dateStr) {
+            state.selectedDateKey = dateStr;
+            document.getElementById('modal-date-title').innerText = `Opsi Tanggal: ${dateStr}`;
+
+            const isClaimed = !!state.claimedDays[dateStr];
+            document.getElementById('label-modal-claim').innerText = isClaimed ? 'Batalkan Klaim Jatah Harian' : 'Klaim Jatah Harian (35k)';
+
+            document.getElementById('modal-date-action').classList.remove('hidden');
+        }
+
+        function closeDateModal() {
+            document.getElementById('modal-date-action').classList.add('hidden');
+        }
+
+        function actionToggleClaim() {
+            if (!state.selectedDateKey) return;
+
+            if (state.balances.totalIncome <= 0) {
+                alert("Belum ada uang masuk dicatat! Jatah harian tidak tersedia.");
+                closeDateModal();
+                return;
+            }
+
+            const dateStr = state.selectedDateKey;
+            if (state.claimedDays[dateStr]) {
+                delete state.claimedDays[dateStr];
+            } else {
+                state.claimedDays[dateStr] = true;
+            }
+
+            closeDateModal();
+            saveState();
+            renderAll();
+        }
+
+        function actionOpenRewardFromDate() {
+            const dateStr = state.selectedDateKey;
+            closeDateModal();
+
+            document.getElementById('rew-date').value = dateStr;
+            openAddRewardModal();
+        }
+
+        function openAddRewardModal() {
+            if (!document.getElementById('rew-date').value) {
+                document.getElementById('rew-date').value = new Date().toISOString().split('T')[0];
+            }
+            document.getElementById('modal-reward-form').classList.remove('hidden');
+        }
+
+        function closeRewardModal() {
+            document.getElementById('modal-reward-form').classList.add('hidden');
+            document.getElementById('rew-title').value = '';
+            document.getElementById('rew-amount').value = '';
+        }
+
+        function handleSaveRewardEvent(e) {
+            e.preventDefault();
+            const title = document.getElementById('rew-title').value;
+            const date = document.getElementById('rew-date').value;
+            const amount = parseFloat(document.getElementById('rew-amount').value);
+            const type = document.getElementById('rew-type').value;
+            const source = document.getElementById('rew-source').value;
+
+            if (!amount || amount <= 0) return;
+
+            const newEvent = { id: Date.now(), title, date, amount, type, source };
+            state.rewardEvents.unshift(newEvent);
+
+            if (source === 'savings') {
+                state.balances.savings -= amount;
+            } else {
+                state.balances.dailyPool -= amount;
+            }
+
+            state.transactions.unshift({
+                id: Date.now(),
+                type: 'OUT',
+                title: `Self Reward (${type}): ${title}`,
+                amount: amount,
+                date: date,
+                category: 'SelfReward',
+                note: `Sumber dana: ${source === 'savings' ? 'Tabungan' : 'Kas Harian'}`
+            });
+
+            closeRewardModal();
+            saveState();
+            renderAll();
+        }
+
+        function deleteRewardEvent(id) {
+            if (confirm("Hapus agenda self reward ini dari daftar?")) {
+                state.rewardEvents = state.rewardEvents.filter(ev => ev.id !== id);
+                saveState();
+                renderAll();
+            }
+        }
+
+        function changeMonth(delta) {
+            state.currentMonth += delta;
+            if (state.currentMonth < 0) {
+                state.currentMonth = 11;
+                state.currentYear--;
+            } else if (state.currentMonth > 11) {
+                state.currentMonth = 0;
+                state.currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function transferTransportToSavings() {
+            if (state.balances.transport <= 0) {
+                alert("Tidak ada saldo transportasi tersisa untuk dipindahkan.");
+                return;
+            }
+            const amount = state.balances.transport;
+            state.balances.savings += amount;
+            state.balances.transport = 0;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            state.transactions.unshift({
+                id: Date.now(),
+                type: 'SYSTEM',
+                title: 'Sisa Transport ke Tabungan',
+                amount: amount,
+                date: todayStr,
+                note: 'Dialokasikan dari sisa jatah mingguan'
+            });
+
+            saveState();
+            renderAll();
+        }
+
+        function transferBillsToSavings() {
+            if (state.balances.bills <= 0) {
+                alert("Tidak ada saldo tagihan tersisa untuk dipindahkan.");
+                return;
+            }
+            const amount = state.balances.bills;
+            state.balances.savings += amount;
+            state.balances.bills = 0;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            state.transactions.unshift({
+                id: Date.now(),
+                type: 'SYSTEM',
+                title: 'Sisa Dana Tagihan ke Tabungan',
+                amount: amount,
+                date: todayStr,
+                note: 'Dialokasikan dari sisa pos tagihan terbayar'
+            });
+
+            saveState();
+            renderAll();
+        }
+
+        // --- SAPU BERSIH TOTAL SISA (UTUH + PECAHAN) KE TABUNGAN ---
+        function sweepUnclaimedToSavings() {
+            const today = new Date();
+            const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+            
+            let totalSweepAmount = 0;
+            let fullUnclaimedDays = 0;
+            let partialRemaindersCount = 0;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const checkDate = new Date(state.currentYear, state.currentMonth, d);
+                // Hanya memproses hari yang telah berlalu (sebelum hari ini)
+                if (checkDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                    const dateStr = formatDateKey(state.currentYear, state.currentMonth, d);
+                    
+                    if (!state.sweptDays[dateStr]) {
+                        const remainder = calculateDayRemainder(dateStr);
+                        if (remainder > 0) {
+                            totalSweepAmount += remainder;
+                            if (!state.claimedDays[dateStr]) {
+                                fullUnclaimedDays++;
+                            } else {
+                                partialRemaindersCount++;
+                            }
+                        }
+                        // Tandai tanggal ini sudah disapu bersih
+                        state.sweptDays[dateStr] = true;
+                    }
+                }
+            }
+
+            if (totalSweepAmount === 0) {
+                alert("Tidak ada sisa jatah harian atau pecahan kembalian yang belum disapu di bulan ini.");
+                return;
+            }
+
+            // Tambahkan ke tabungan dan kurangi dailyPool
+            state.balances.savings += totalSweepAmount;
+            state.balances.dailyPool -= totalSweepAmount;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            state.transactions.unshift({
+                id: Date.now(),
+                type: 'SYSTEM',
+                title: 'Sapu Bersih Sisa Uang Harian ke Tabungan',
+                amount: totalSweepAmount,
+                date: todayStr,
+                note: `Termasuk ${fullUnclaimedDays} hari utuh & ${partialRemaindersCount} hari sisa uang pecahan`
+            });
+
+            saveState();
+            renderAll();
+        }
+
+        function formatDateKey(year, month, day) {
+            const m = String(month + 1).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            return `${year}-${m}-${d}`;
+        }
+
+        // --- RENDER ENGINE ---
+        function renderAll() {
+            renderStats();
+            renderCalendar();
+            renderRewardList();
+            renderHistory();
+            checkBorosWarning();
+        }
+
+        function renderStats() {
+            document.getElementById('stat-total-in').innerText = formatRp(state.balances.totalIncome);
+            document.getElementById('stat-savings').innerText = formatRp(state.balances.savings);
+            document.getElementById('stat-bills').innerText = formatRp(state.balances.bills);
+            document.getElementById('stat-transport').innerText = formatRp(state.balances.transport);
+
+            const todayLimit = state.balances.totalIncome > 0 ? state.defaultDailyAllowance : 0;
+            document.getElementById('stat-daily-limit').innerText = formatRp(todayLimit);
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            document.getElementById('calendar-month-year').innerText = `${monthNames[state.currentMonth]} ${state.currentYear}`;
+
+            const firstDay = new Date(state.currentYear, state.currentMonth, 1).getDay();
+            const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "h-16 bg-slate-50/50 rounded-xl border border-slate-100/50 opacity-40";
+                grid.appendChild(emptyCell);
+            }
+
+            let monthTotalRemainder = 0;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = formatDateKey(state.currentYear, state.currentMonth, day);
+                const isClaimed = !!state.claimedDays[dateKey];
+                const isToday = (today.getDate() === day && today.getMonth() === state.currentMonth && today.getFullYear() === state.currentYear);
+                const isPast = new Date(state.currentYear, state.currentMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                const dayRewards = state.rewardEvents.filter(ev => ev.date === dateKey);
+
+                // Hitung sisa pecahan untuk hari ini
+                const dayRemainder = calculateDayRemainder(dateKey);
+                if (isPast && !state.sweptDays[dateKey] && state.balances.totalIncome > 0) {
+                    monthTotalRemainder += dayRemainder;
+                }
+
+                const cell = document.createElement('div');
+                let cellClasses = "h-16 rounded-xl p-1 border flex flex-col justify-between cursor-pointer transition relative overflow-hidden ";
+
+                if (isToday) {
+                    cellClasses += "border-indigo-500 bg-indigo-50/40 font-bold ";
+                } else if (dayRewards.length > 0) {
+                    cellClasses += "border-purple-300 bg-purple-50/70 text-purple-900 ";
+                } else if (isClaimed) {
+                    cellClasses += "border-emerald-200 bg-emerald-50/60 text-emerald-800 ";
+                } else if (isPast) {
+                    cellClasses += "border-amber-200 bg-amber-50/30 text-slate-600 ";
+                } else {
+                    cellClasses += "border-slate-100 bg-white hover:border-slate-200 ";
+                }
+
+                cell.className = cellClasses;
+                cell.onclick = () => handleDayClick(dateKey);
+
+                let rewardTagHTML = '';
+                if (dayRewards.length > 0) {
+                    rewardTagHTML = `
+                        <div class="bg-purple-600 text-white text-[8px] px-1 py-0.5 rounded truncate font-normal mt-0.5">
+                            ✈️ ${dayRewards[0].title}
+                        </div>
+                    `;
+                }
+
+                // Label status bawah
+                let subLabelHTML = '35k';
+                if (state.balances.totalIncome <= 0) {
+                    subLabelHTML = 'Rp 0';
+                } else if (isClaimed) {
+                    if (dayRemainder > 0 && dayRemainder < 35000) {
+                        subLabelHTML = `<span class="text-blue-600 font-bold">Sisa: ${(dayRemainder/1000).toFixed(0)}k</span>`;
+                    } else {
+                        subLabelHTML = 'Diambil';
+                    }
+                }
+
+                cell.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="${isToday ? 'bg-indigo-600 text-white w-4 h-4 rounded-full flex items-center justify-center' : 'text-slate-500'}">${day}</span>
+                        ${isClaimed ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>' : ''}
+                    </div>
+                    ${rewardTagHTML}
+                    <div class="text-[9px] text-center font-medium ${isClaimed ? 'text-emerald-700' : 'text-slate-400'}">
+                        ${subLabelHTML}
+                    </div>
+                `;
+
+                grid.appendChild(cell);
+            }
+
+            document.getElementById('unclaimed-total').innerText = formatRp(monthTotalRemainder);
+        }
+
+        function renderRewardList() {
+            const container = document.getElementById('reward-list');
+            container.innerHTML = '';
+
+            if (state.rewardEvents.length === 0) {
+                container.innerHTML = `
+                    <p class="text-xs text-slate-400 italic py-3 text-center">Belum ada agenda liburan / self reward dicatat.</p>
+                `;
+                return;
+            }
+
+            state.rewardEvents.forEach(ev => {
+                const item = document.createElement('div');
+                item.className = "p-2.5 bg-purple-50/60 rounded-xl flex justify-between items-center border border-purple-100 text-xs";
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 bg-purple-200 text-purple-700 rounded-lg flex items-center justify-center font-bold text-xs">
+                            ${ev.type === 'Mendadak' ? '⚡' : '📅'}
+                        </span>
+                        <div>
+                            <p class="font-bold text-purple-900">${ev.title}</p>
+                            <p class="text-[10px] text-purple-600">${ev.date} • ${ev.type} (${ev.source === 'savings' ? 'Tabungan' : 'Kas Harian'})</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-purple-800">${formatRp(ev.amount)}</span>
+                        <button onclick="deleteRewardEvent(${ev.id})" class="text-rose-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('transaction-history');
+            container.innerHTML = '';
+
+            if (state.transactions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-solid fa-receipt text-2xl mb-2 text-slate-300"></i>
+                        <p>Belum ada transaksi dicatat.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            state.transactions.forEach(tx => {
+                const item = document.createElement('div');
+                item.className = "p-3 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100 text-xs";
+
+                let badgeColor = "bg-rose-100 text-rose-600";
+                let icon = "fa-minus";
+                let prefix = "-";
+
+                if (tx.type === 'IN') {
+                    badgeColor = "bg-emerald-100 text-emerald-600";
+                    icon = "fa-plus";
+                    prefix = "+";
+                } else if (tx.type === 'SYSTEM') {
+                    badgeColor = "bg-amber-100 text-amber-600";
+                    icon = "fa-arrows-rotate";
+                    prefix = "";
+                }
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center font-bold">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700">${tx.title}</p>
+                            <p class="text-[10px] text-slate-400">${tx.date} ${tx.note ? '• ' + tx.note : ''}</p>
+                        </div>
+                    </div>
+                    <div class="font-bold ${tx.type === 'IN' ? 'text-emerald-600' : tx.type === 'OUT' ? 'text-rose-600' : 'text-amber-600'}">
+                        ${prefix} ${formatRp(tx.amount)}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Peringatan Boros
+        function checkBorosWarning() {
+            const banner = document.getElementById('alert-banner');
+            const icon = document.getElementById('alert-icon');
+            const title = document.getElementById('alert-title');
+            const desc = document.getElementById('alert-desc');
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            const todayExpenses = state.transactions
+                .filter(t => t.type === 'OUT' && t.date === todayStr && t.category === 'MakanJajan')
+                .reduce((acc, curr) => acc + curr.amount, 0);
+
+            const limit = state.balances.totalIncome > 0 ? 40000 : 0;
+
+            if (todayExpenses > limit && limit > 0) {
+                banner.className = "rounded-2xl p-4 bg-rose-50 border border-rose-200 text-rose-800";
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-600"></i>';
+                title.innerText = "Peringatan Boros!";
+                desc.innerText = `Pengeluaran makan/jajan hari ini (${formatRp(todayExpenses)}) melebihi batas maksimal Rp 40.000. Hemat sisa uang Anda!`;
+                banner.classList.remove('hidden');
+            } else if (state.balances.dailyPool < 0) {
+                banner.className = "rounded-2xl p-4 bg-amber-50 border border-amber-200 text-amber-800";
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-600"></i>';
+                title.innerText = "Kas Harian Menipis!";
+                desc.innerText = "Pengeluaran harian sudah mengambil porsi dari uang Tabungan Anda.";
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
