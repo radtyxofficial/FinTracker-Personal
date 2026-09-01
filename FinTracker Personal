@@ -1,0 +1,1145 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTracker Personal Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Konfigurasi Firebase dari Proyek fintracker-personal-cad98 milik Anda
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_BlBGS7u4PlQRAn7J-d0d16iI_86E9pg",
+            authDomain: "fintracker-personal-cad98.firebaseapp.com",
+            projectId: "fintracker-personal-cad98",
+            storageBucket: "fintracker-personal-cad98.firebasestorage.app",
+            messagingSenderId: "902658300853",
+            appId: "1:902658300853:web:a334ca394c025439b2d7fc",
+            measurementId: "G-ZPP2Z39FDV"
+        };
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+
+        // Mendengarkan Status Auth Login
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-email-display').innerText = user.email;
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('app-section').classList.remove('hidden');
+                
+                // Mulai Mendengarkan Data Realtime dari Cloud
+                listenToUserData(user.uid);
+            } else {
+                currentUser = null;
+                document.getElementById('auth-section').classList.remove('hidden');
+                document.getElementById('app-section').classList.add('hidden');
+            }
+        });
+
+        // Handler Autentikasi
+        window.handleAuthAction = async function(e, type) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const errElem = document.getElementById('auth-error');
+            errElem.classList.add('hidden');
+
+            if (!email || !password) {
+                errElem.innerText = "Isi email dan password terlebih dahulu.";
+                errElem.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                if (type === 'register') {
+                    await createUserWithEmailAndPassword(auth, email, password);
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
+                }
+            } catch (error) {
+                let msg = error.message;
+                if (error.code === 'auth/wrong-password') msg = "Password salah.";
+                if (error.code === 'auth/user-not-found') msg = "Akun belum terdaftar. Silakan klik Daftar Baru.";
+                if (error.code === 'auth/email-already-in-use') msg = "Email sudah digunakan. Silakan klik Masuk.";
+                if (error.code === 'auth/weak-password') msg = "Password minimal 6 karakter.";
+                errElem.innerText = msg;
+                errElem.classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = function() {
+            signOut(auth);
+        };
+
+        // Realtime Database Sync
+        function listenToUserData(uid) {
+            const userDocRef = doc(db, "users", uid);
+            onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    window.state = docSnap.data();
+                } else {
+                    window.state = {
+                        transactions: [],
+                        claimedDays: {},
+                        rewardEvents: [],
+                        sweptDays: {},
+                        accounts: { mandiri: 0, bca: 0, jagoMain: 0, jagoSavings: 0, jagoBills: 0 },
+                        currentMonth: new Date().getMonth(),
+                        currentYear: new Date().getFullYear(),
+                        defaultDailyAllowance: 35000
+                    };
+                    window.saveStateToCloud();
+                }
+                window.renderAll();
+            });
+        }
+
+        window.saveStateToCloud = async function() {
+            if (!currentUser) return;
+            try {
+                await setDoc(doc(db, "users", currentUser.uid), window.state);
+            } catch (err) {
+                console.error("Gagal menyinkronkan data ke Cloud:", err);
+            }
+        };
+    </script>
+</head>
+<body class="text-slate-800 pb-12">
+
+    <section id="auth-section" class="min-h-screen flex items-center justify-center px-4 bg-slate-100">
+        <div class="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full border border-slate-200 space-y-4">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center mx-auto mb-2 text-xl shadow-md">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800">FinTracker Cloud</h2>
+                <p class="text-xs text-slate-500 mt-1">Masuk untuk mengakses & menyinkronkan data keuangan Anda di seluruh perangkat.</p>
+            </div>
+
+            <p id="auth-error" class="hidden text-xs bg-rose-50 text-rose-600 p-2.5 rounded-xl text-center border border-rose-200"></p>
+
+            <form class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Email</label>
+                    <input type="email" id="auth-email" placeholder="nama@email.com" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                    <input type="password" id="auth-password" placeholder="••••••••" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="handleAuthAction(event, 'login')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-xl shadow-sm transition">Masuk</button>
+                    <button onclick="handleAuthAction(event, 'register')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 rounded-xl transition">Daftar Baru</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <div id="app-section" class="hidden">
+        <header class="bg-gradient-to-r from-blue-700 via-indigo-700 to-teal-700 text-white shadow-lg">
+            <div class="max-w-6xl mx-auto px-4 py-5 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-2xl font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-building-columns"></i> FinTracker Personal Cloud
+                    </h1>
+                    <p id="motivational-quote" class="text-emerald-100 text-xs mt-1 italic flex items-center gap-2">
+                        <i class="fa-solid fa-quote-left text-xs opacity-75"></i>
+                        <span>"Jangan menabung apa yang tersisa setelah dibelanjakan, tetapi habiskan apa yang tersisa setelah menabung." – Warren Buffett</span>
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <span class="bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 text-xs">
+                        <i class="fa-solid fa-user text-teal-300 me-1.5"></i> <span id="user-email-display">--</span>
+                    </span>
+                    <button onclick="handleLogout()" class="bg-rose-500/80 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded-xl transition">
+                        <i class="fa-solid fa-right-from-bracket me-1"></i> Keluar
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <section class="lg:col-span-5 flex flex-col gap-6">
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-indigo-500"></i> Saldo Bank & Kantong
+                        </h2>
+                        <span id="stat-total-assets" class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg">Total: Rp 0</span>
+                    </div>
+
+                    <div class="space-y-2.5">
+                        <div class="p-3 bg-blue-50/60 rounded-xl flex justify-between items-center border border-blue-100">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 bg-blue-600 text-white rounded-lg flex items-center justify-center font-bold text-xs">M</span>
+                                <div>
+                                    <p class="text-[11px] text-slate-500 font-medium">Bank Mandiri</p>
+                                    <p id="acc-mandiri" class="text-sm font-bold text-slate-800">Rp 0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-sky-50/60 rounded-xl flex justify-between items-center border border-sky-100">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 bg-sky-700 text-white rounded-lg flex items-center justify-center font-bold text-xs">BCA</span>
+                                <div>
+                                    <p class="text-[11px] text-slate-500 font-medium">Bank BCA</p>
+                                    <p id="acc-bca" class="text-sm font-bold text-slate-800">Rp 0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-amber-50/60 rounded-xl flex justify-between items-center border border-amber-100">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 bg-amber-500 text-white rounded-lg flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-utensils"></i></span>
+                                <div>
+                                    <p class="text-[11px] text-amber-800 font-semibold">Jago - Kantong Utama (Harian)</p>
+                                    <p id="acc-jago-main" class="text-sm font-bold text-amber-900">Rp 0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-emerald-50/60 rounded-xl flex justify-between items-center border border-emerald-100">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 bg-emerald-600 text-white rounded-lg flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-piggy-bank"></i></span>
+                                <div>
+                                    <p class="text-[11px] text-emerald-800 font-semibold">Jago - Kantong Tabungan</p>
+                                    <p id="acc-jago-savings" class="text-sm font-bold text-emerald-900">Rp 0</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-rose-50/60 rounded-xl flex justify-between items-center border border-rose-100">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 bg-rose-600 text-white rounded-lg flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-file-invoice-dollar"></i></span>
+                                <div>
+                                    <p class="text-[11px] text-rose-800 font-semibold">Jago - Kantong Tagihan</p>
+                                    <p id="acc-jago-bills" class="text-sm font-bold text-rose-900">Rp 0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openTransferModal()" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 px-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-right-left"></i> Pindahkan Uang / Transfer Antar Rekening
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex border-b border-slate-100 mb-4">
+                        <button id="btn-tab-in" onclick="switchTab('in')" class="flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition">
+                            <i class="fa-solid fa-plus-circle me-1"></i> Uang Masuk
+                        </button>
+                        <button id="btn-tab-out" onclick="switchTab('out')" class="flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition">
+                            <i class="fa-solid fa-minus-circle me-1"></i> Pengeluaran
+                        </button>
+                    </div>
+
+                    <form id="form-income" class="space-y-4" onsubmit="handleAddIncome(event)">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Sumber Uang Masuk</label>
+                            <select id="inc-source" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <option value="Gaji Utama">Gaji Utama</option>
+                                <option value="Bonus Kerja">Bonus Kerja</option>
+                                <option value="Uang KIP / Beasiswa">Uang KIP / Beasiswa</option>
+                                <option value="Lainnya">Lain-lain</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal (Rp)</label>
+                            <input type="number" id="inc-amount" placeholder="Contoh: 2000000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Masuk Ke Rekening</label>
+                            <select id="inc-target-account" onchange="toggleAutoSplitNotice()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <option value="jago-auto">⭐ Bank Jago (Alokasi Otomatis 3 Kantong)</option>
+                                <option value="mandiri">Bank Mandiri</option>
+                                <option value="bca">Bank BCA</option>
+                                <option value="jago-savings">Bank Jago - Kantong Tabungan</option>
+                                <option value="jago-main">Bank Jago - Kantong Utama</option>
+                            </select>
+                        </div>
+
+                        <div id="jago-split-info" class="p-3 bg-amber-50/60 rounded-xl border border-amber-200/60 space-y-2">
+                            <span class="text-xs font-bold text-amber-800 block">Aturan Pembagian Kantong Jago:</span>
+                            <div class="grid grid-cols-3 gap-1 text-center text-xs">
+                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                    <span class="text-slate-400 block text-[9px]">Tabungan</span>
+                                    <span class="font-bold text-emerald-600">40%</span>
+                                </div>
+                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                    <span class="text-slate-400 block text-[9px]">Utama</span>
+                                    <span class="font-bold text-amber-600">50%</span>
+                                </div>
+                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                    <span class="text-slate-400 block text-[9px]">Tagihan</span>
+                                    <span class="font-bold text-rose-600">10%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition text-sm">
+                            Simpan Uang Masuk
+                        </button>
+                    </form>
+
+                    <form id="form-expense" class="space-y-4 hidden" onsubmit="handleAddExpense(event)">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Transaksi</label>
+                            <input type="date" id="exp-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Pengeluaran</label>
+                            <select id="exp-category" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                                <option value="MakanJajan">Makan / Jajan Harian</option>
+                                <option value="Transportasi">Transportasi Kerja</option>
+                                <option value="SelfReward">Self Reward / Liburan</option>
+                                <option value="Tagihan">Bayar Tagihan</option>
+                                <option value="Lainnya">Pengeluaran Lainnya</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Bayar Menggunakan</label>
+                            <select id="exp-account" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                                <option value="jago-main">Bank Jago - Kantong Utama</option>
+                                <option value="jago-bills">Bank Jago - Kantong Tagihan</option>
+                                <option value="jago-savings">Bank Jago - Kantong Tabungan</option>
+                                <option value="mandiri">Bank Mandiri</option>
+                                <option value="bca">Bank BCA</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal (Rp)</label>
+                            <input type="number" id="exp-amount" placeholder="Contoh: 26000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan</label>
+                            <input type="text" id="exp-note" placeholder="Misal: Nasi Ayam + Es Teh" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500">
+                        </div>
+
+                        <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 rounded-xl shadow-md transition text-sm">
+                            Catat Pengeluaran
+                        </button>
+                    </form>
+                </div>
+
+            </section>
+
+            <section class="lg:col-span-7 flex flex-col gap-6">
+
+                <div id="alert-banner" class="hidden rounded-2xl p-4 transition-all duration-300">
+                    <div class="flex items-start gap-3">
+                        <div id="alert-icon" class="text-xl"></div>
+                        <div>
+                            <h4 id="alert-title" class="font-bold text-sm"></h4>
+                            <p id="alert-desc" class="text-xs mt-0.5"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-check text-indigo-600"></i> Kalender Jatah Harian & Self Reward
+                            </h2>
+                            <p class="text-xs text-slate-500">Sisa pecahan harian disapu dari Kantong Utama ke **Kantong Tabungan Jago**.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="calendar-month-year" class="text-xs font-bold text-slate-700 min-w-[100px] text-center">-- ----</span>
+                            <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 mb-4 flex flex-wrap gap-4 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                            <span class="text-slate-700">Jatah Diambil</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                            <span class="text-slate-700">Ada Sisa Pecahan</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-purple-600 inline-block"></span>
+                            <span class="text-slate-700">Self Reward / Liburan</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-1.5 text-center mb-2">
+                        <span class="text-[11px] font-bold text-slate-400">Min</span>
+                        <span class="text-[11px] font-bold text-slate-400">Sen</span>
+                        <span class="text-[11px] font-bold text-slate-400">Sel</span>
+                        <span class="text-[11px] font-bold text-slate-400">Rab</span>
+                        <span class="text-[11px] font-bold text-slate-400">Kam</span>
+                        <span class="text-[11px] font-bold text-slate-400">Jum</span>
+                        <span class="text-[11px] font-bold text-slate-400">Sab</span>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-2"></div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+                        <div class="text-xs text-slate-600">
+                            Total Sisa Hemat Bulan Ini: <br>
+                            <span id="unclaimed-total" class="font-bold text-emerald-600 text-sm">Rp 0</span>
+                        </div>
+                        <button onclick="sweepUnclaimedToSavings()" class="text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3.5 py-2 rounded-xl transition shadow-sm">
+                            <i class="fa-solid fa-broom me-1.5"></i> Sapu Bersih Ke Kantong Tabungan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-plane-departure text-purple-600"></i> Agenda Self Reward / Liburan
+                        </h3>
+                        <button onclick="openAddRewardModal()" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                            <i class="fa-solid fa-plus me-1"></i> Tambah Agenda
+                        </button>
+                    </div>
+                    <div id="reward-list" class="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1"></div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex-1 flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-slate-500"></i> Riwayat Transaksi Rekening
+                        </h3>
+                        <button onclick="resetAllCloudData()" class="text-xs text-rose-500 hover:underline">Reset Data Cloud</button>
+                    </div>
+
+                    <div class="overflow-y-auto max-h-[250px] custom-scrollbar space-y-2 pr-1" id="transaction-history"></div>
+                </div>
+
+            </section>
+
+        </main>
+    </div>
+
+    <div id="modal-transfer-form" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-right-left text-indigo-600"></i> Pindahkan Uang / Transfer Rekening
+                </h3>
+                <button onclick="closeTransferModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="handleExecuteTransfer(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Dari Rekening (Pengirim)</label>
+                    <select id="trf-from" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="mandiri">Bank Mandiri</option>
+                        <option value="bca">Bank BCA</option>
+                        <option value="jago-main">Bank Jago - Kantong Utama</option>
+                        <option value="jago-savings">Bank Jago - Kantong Tabungan</option>
+                        <option value="jago-bills">Bank Jago - Kantong Tagihan</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Ke Rekening (Penerima)</label>
+                    <select id="trf-to" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="jago-main">Bank Jago - Kantong Utama</option>
+                        <option value="jago-savings">Bank Jago - Kantong Tabungan</option>
+                        <option value="jago-bills">Bank Jago - Kantong Tagihan</option>
+                        <option value="bca">Bank BCA</option>
+                        <option value="mandiri">Bank Mandiri</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nominal (Rp)</label>
+                        <input type="number" id="trf-amount" placeholder="Contoh: 500000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Biaya Admin (Rp)</label>
+                        <input type="number" id="trf-admin-fee" placeholder="0" value="0" min="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Catatan Tambahan</label>
+                    <input type="text" id="trf-note" placeholder="Misal: Transfer BI-FAST" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeTransferModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-2.5 rounded-xl transition">Batal</button>
+                    <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold py-2.5 rounded-xl shadow-md transition">Kirim Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-date-action" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 id="modal-date-title" class="font-bold text-sm text-slate-800">Tanggal: --</h3>
+                <button onclick="closeDateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="actionToggleClaim()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-check"></i></span>
+                    <div>
+                        <p id="label-modal-claim" class="text-xs font-bold text-slate-700">Klaim Jatah Harian (35k)</p>
+                        <p class="text-[10px] text-slate-500">Tandai jatah harian diambil di tanggal ini</p>
+                    </div>
+                </button>
+
+                <button onclick="actionOpenRewardFromDate()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-gift"></i></span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-700">Tambah Self Reward / Liburan</p>
+                        <p class="text-[10px] text-slate-500">Catat agenda liburan di tanggal ini</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-reward-form" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-xl border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-plane-departure text-purple-600"></i> Agenda Self Reward / Liburan
+                </h3>
+                <button onclick="closeRewardModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form onsubmit="handleSaveRewardEvent(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Agenda</label>
+                    <input type="text" id="rew-title" placeholder="Contoh: Trip Ke Pantai" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal</label>
+                        <input type="date" id="rew-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Estimasi Biaya (Rp)</label>
+                        <input type="number" id="rew-amount" placeholder="Contoh: 150000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Tipe Agenda</label>
+                    <select id="rew-type" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="Mendadak">⚡ Liburan Mendadak</option>
+                        <option value="Terencana">📅 Terencana Jauh Hari</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Potong Dari Rekening</label>
+                    <select id="rew-account" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <option value="jago-savings">Bank Jago - Kantong Tabungan</option>
+                        <option value="jago-main">Bank Jago - Kantong Utama</option>
+                        <option value="mandiri">Bank Mandiri</option>
+                        <option value="bca">Bank BCA</option>
+                    </select>
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeRewardModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold py-2.5 rounded-xl transition">Batal</button>
+                    <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-2.5 rounded-xl shadow-md transition">Simpan Agenda</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const quotes = [
+            '"Jangan menabung apa yang tersisa setelah dibelanjakan, tetapi habiskan apa yang tersisa setelah menabung." – Warren Buffett',
+            '"Uang adalah hamba yang baik, tetapi tuan yang buruk." – Benjamin Franklin',
+            '"Bukan berapa banyak uang yang Anda hasilkan, tetapi berapa banyak uang yang Anda simpan." – Robert Kiyosaki',
+            '"Menabung hari ini memberi Anda pilihan besok." – W. Clement Stone',
+            '"Kekayaan tidak terdiri dari memiliki barang-barang besar, tetapi memiliki sedikit keinginan." – Epictetus'
+        ];
+
+        window.state = {
+            transactions: [],
+            claimedDays: {},
+            rewardEvents: [],
+            sweptDays: {},
+            accounts: { mandiri: 0, bca: 0, jagoMain: 0, jagoSavings: 0, jagoBills: 0 },
+            currentMonth: new Date().getMonth(),
+            currentYear: new Date().getFullYear(),
+            defaultDailyAllowance: 35000,
+            selectedDateKey: null
+        };
+
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        const accountLabels = {
+            'mandiri': 'Mandiri',
+            'bca': 'BCA',
+            'jago-main': 'Jago Utama',
+            'jago-savings': 'Jago Tabungan',
+            'jago-bills': 'Jago Tagihan'
+        };
+
+        window.onload = function() {
+            initMotivationalQuote();
+            document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+        };
+
+        function initMotivationalQuote() {
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            const quoteElem = document.getElementById('motivational-quote');
+            if (quoteElem) quoteElem.querySelector('span').innerText = quotes[randomIndex];
+        }
+
+        function formatRp(val) {
+            return "Rp " + Math.round(val || 0).toLocaleString('id-ID');
+        }
+
+        function switchTab(tab) {
+            const btnIn = document.getElementById('btn-tab-in');
+            const btnOut = document.getElementById('btn-tab-out');
+            const formIn = document.getElementById('form-income');
+            const formOut = document.getElementById('form-expense');
+
+            if (tab === 'in') {
+                btnIn.className = "flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition";
+                btnOut.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition";
+                formIn.classList.remove('hidden');
+                formOut.classList.add('hidden');
+            } else {
+                btnOut.className = "flex-1 pb-3 text-sm font-semibold text-rose-600 border-b-2 border-rose-600 transition";
+                btnIn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition";
+                formOut.classList.remove('hidden');
+                formIn.classList.add('hidden');
+            }
+        }
+
+        function toggleAutoSplitNotice() {
+            const target = document.getElementById('inc-target-account').value;
+            document.getElementById('jago-split-info').classList.toggle('hidden', target !== 'jago-auto');
+        }
+
+        function handleAddIncome(e) {
+            e.preventDefault();
+            const source = document.getElementById('inc-source').value;
+            const amount = parseFloat(document.getElementById('inc-amount').value);
+            const targetAcc = document.getElementById('inc-target-account').value;
+
+            if (!amount || amount <= 0) return;
+
+            let noteText = '';
+
+            if (targetAcc === 'jago-auto') {
+                window.state.accounts.jagoSavings += (amount * 0.40);
+                window.state.accounts.jagoMain += (amount * 0.50);
+                window.state.accounts.jagoBills += (amount * 0.10);
+                noteText = `Split Jago: Tabungan 40%, Utama 50%, Tagihan 10%`;
+            } else if (targetAcc === 'mandiri') {
+                window.state.accounts.mandiri += amount;
+                noteText = 'Masuk ke Bank Mandiri';
+            } else if (targetAcc === 'bca') {
+                window.state.accounts.bca += amount;
+                noteText = 'Masuk ke Bank BCA';
+            } else if (targetAcc === 'jago-savings') {
+                window.state.accounts.jagoSavings += amount;
+                noteText = 'Masuk ke Jago Tabungan';
+            } else if (targetAcc === 'jago-main') {
+                window.state.accounts.jagoMain += amount;
+                noteText = 'Masuk ke Jago Utama';
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'IN',
+                title: `Masuk: ${source}`,
+                amount: amount,
+                date: todayStr,
+                note: noteText
+            });
+
+            document.getElementById('inc-amount').value = '';
+            window.saveStateToCloud();
+        }
+
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const date = document.getElementById('exp-date').value || new Date().toISOString().split('T')[0];
+            const category = document.getElementById('exp-category').value;
+            const account = document.getElementById('exp-account').value;
+            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const note = document.getElementById('exp-note').value || category;
+
+            if (!amount || amount <= 0) return;
+
+            if (account === 'mandiri') window.state.accounts.mandiri -= amount;
+            else if (account === 'bca') window.state.accounts.bca -= amount;
+            else if (account === 'jago-main') window.state.accounts.jagoMain -= amount;
+            else if (account === 'jago-savings') window.state.accounts.jagoSavings -= amount;
+            else if (account === 'jago-bills') window.state.accounts.jagoBills -= amount;
+
+            if (category === 'MakanJajan') {
+                window.state.claimedDays[date] = true;
+            }
+
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'OUT',
+                title: `${category} - ${note}`,
+                amount: amount,
+                date: date,
+                category: category,
+                note: `Dibayar pakai ${accountLabels[account]}`
+            });
+
+            document.getElementById('exp-amount').value = '';
+            document.getElementById('exp-note').value = '';
+            window.saveStateToCloud();
+        }
+
+        function openTransferModal() { document.getElementById('modal-transfer-form').classList.remove('hidden'); }
+        function closeTransferModal() {
+            document.getElementById('modal-transfer-form').classList.add('hidden');
+            document.getElementById('trf-amount').value = '';
+            document.getElementById('trf-admin-fee').value = '0';
+        }
+
+        function handleExecuteTransfer(e) {
+            e.preventDefault();
+            const fromAcc = document.getElementById('trf-from').value;
+            const toAcc = document.getElementById('trf-to').value;
+            const amount = parseFloat(document.getElementById('trf-amount').value);
+            const adminFee = parseFloat(document.getElementById('trf-admin-fee').value) || 0;
+            const note = document.getElementById('trf-note').value;
+
+            if (fromAcc === toAcc) { alert("Rekening pengirim dan penerima tidak boleh sama!"); return; }
+            if (!amount || amount <= 0) return;
+
+            const totalDeduction = amount + adminFee;
+
+            if (fromAcc === 'mandiri') window.state.accounts.mandiri -= totalDeduction;
+            else if (fromAcc === 'bca') window.state.accounts.bca -= totalDeduction;
+            else if (fromAcc === 'jago-main') window.state.accounts.jagoMain -= totalDeduction;
+            else if (fromAcc === 'jago-savings') window.state.accounts.jagoSavings -= totalDeduction;
+            else if (fromAcc === 'jago-bills') window.state.accounts.jagoBills -= totalDeduction;
+
+            if (toAcc === 'mandiri') window.state.accounts.mandiri += amount;
+            else if (toAcc === 'bca') window.state.accounts.bca += amount;
+            else if (toAcc === 'jago-main') window.state.accounts.jagoMain += amount;
+            else if (toAcc === 'jago-savings') window.state.accounts.jagoSavings += amount;
+            else if (toAcc === 'jago-bills') window.state.accounts.jagoBills += amount;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            let noteDetail = note ? note : `Transfer dari ${accountLabels[fromAcc]} ke ${accountLabels[toAcc]}`;
+            if (adminFee > 0) noteDetail += ` (Admin Fee: ${formatRp(adminFee)})`;
+
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'TRANSFER',
+                title: `Transfer: ${accountLabels[fromAcc]} ➔ ${accountLabels[toAcc]}`,
+                amount: amount,
+                adminFee: adminFee,
+                date: todayStr,
+                note: noteDetail
+            });
+
+            closeTransferModal();
+            window.saveStateToCloud();
+        }
+
+        function calculateDayRemainder(dateStr) {
+            const dayExpenses = window.state.transactions
+                .filter(t => t.type === 'OUT' && t.date === dateStr && t.category === 'MakanJajan')
+                .reduce((acc, curr) => acc + curr.amount, 0);
+
+            const isClaimed = !!window.state.claimedDays[dateStr];
+            if (!isClaimed) return window.state.defaultDailyAllowance;
+            const remainder = window.state.defaultDailyAllowance - dayExpenses;
+            return remainder > 0 ? remainder : 0;
+        }
+
+        function handleDayClick(dateStr) {
+            window.state.selectedDateKey = dateStr;
+            document.getElementById('modal-date-title').innerText = `Opsi Tanggal: ${dateStr}`;
+            const isClaimed = !!window.state.claimedDays[dateStr];
+            document.getElementById('label-modal-claim').innerText = isClaimed ? 'Batalkan Klaim Jatah Harian' : 'Klaim Jatah Harian (35k)';
+            document.getElementById('modal-date-action').classList.remove('hidden');
+        }
+
+        function closeDateModal() { document.getElementById('modal-date-action').classList.add('hidden'); }
+
+        function actionToggleClaim() {
+            if (!window.state.selectedDateKey) return;
+            const dateStr = window.state.selectedDateKey;
+            if (window.state.claimedDays[dateStr]) {
+                delete window.state.claimedDays[dateStr];
+            } else {
+                window.state.claimedDays[dateStr] = true;
+            }
+            closeDateModal();
+            window.saveStateToCloud();
+        }
+
+        function actionOpenRewardFromDate() {
+            const dateStr = window.state.selectedDateKey;
+            closeDateModal();
+            document.getElementById('rew-date').value = dateStr;
+            openAddRewardModal();
+        }
+
+        function openAddRewardModal() {
+            if (!document.getElementById('rew-date').value) {
+                document.getElementById('rew-date').value = new Date().toISOString().split('T')[0];
+            }
+            document.getElementById('modal-reward-form').classList.remove('hidden');
+        }
+
+        function closeRewardModal() {
+            document.getElementById('modal-reward-form').classList.add('hidden');
+            document.getElementById('rew-title').value = '';
+            document.getElementById('rew-amount').value = '';
+        }
+
+        function handleSaveRewardEvent(e) {
+            e.preventDefault();
+            const title = document.getElementById('rew-title').value;
+            const date = document.getElementById('rew-date').value;
+            const amount = parseFloat(document.getElementById('rew-amount').value);
+            const type = document.getElementById('rew-type').value;
+            const account = document.getElementById('rew-account').value;
+
+            if (!amount || amount <= 0) return;
+
+            window.state.rewardEvents.unshift({ id: Date.now(), title, date, amount, type, account });
+
+            if (account === 'mandiri') window.state.accounts.mandiri -= amount;
+            else if (account === 'bca') window.state.accounts.bca -= amount;
+            else if (account === 'jago-main') window.state.accounts.jagoMain -= amount;
+            else if (account === 'jago-savings') window.state.accounts.jagoSavings -= amount;
+
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'OUT',
+                title: `Self Reward (${type}): ${title}`,
+                amount: amount,
+                date: date,
+                category: 'SelfReward',
+                note: `Dipotong dari ${accountLabels[account]}`
+            });
+
+            closeRewardModal();
+            window.saveStateToCloud();
+        }
+
+        function deleteRewardEvent(id) {
+            if (confirm("Hapus agenda self reward ini?")) {
+                window.state.rewardEvents = window.state.rewardEvents.filter(ev => ev.id !== id);
+                window.saveStateToCloud();
+            }
+        }
+
+        function changeMonth(delta) {
+            window.state.currentMonth += delta;
+            if (window.state.currentMonth < 0) {
+                window.state.currentMonth = 11;
+                window.state.currentYear--;
+            } else if (window.state.currentMonth > 11) {
+                window.state.currentMonth = 0;
+                window.state.currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function sweepUnclaimedToSavings() {
+            const today = new Date();
+            const daysInMonth = new Date(window.state.currentYear, window.state.currentMonth + 1, 0).getDate();
+            let totalSweepAmount = 0;
+            let fullDays = 0, partialDays = 0;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const checkDate = new Date(window.state.currentYear, window.state.currentMonth, d);
+                if (checkDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                    const dateStr = formatDateKey(window.state.currentYear, window.state.currentMonth, d);
+                    if (!window.state.sweptDays[dateStr]) {
+                        const remainder = calculateDayRemainder(dateStr);
+                        if (remainder > 0) {
+                            totalSweepAmount += remainder;
+                            if (!window.state.claimedDays[dateStr]) fullDays++;
+                            else partialDays++;
+                        }
+                        window.state.sweptDays[dateStr] = true;
+                    }
+                }
+            }
+
+            if (totalSweepAmount === 0) {
+                alert("Tidak ada sisa jatah harian yang perlu disapu.");
+                return;
+            }
+
+            window.state.accounts.jagoMain -= totalSweepAmount;
+            window.state.accounts.jagoSavings += totalSweepAmount;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'SYSTEM',
+                title: 'Sapu Bersih ke Kantong Tabungan',
+                amount: totalSweepAmount,
+                date: todayStr,
+                note: `Sapu bersih ${fullDays} hari utuh & ${partialDays} sisa pecahan`
+            });
+
+            window.saveStateToCloud();
+        }
+
+        function formatDateKey(year, month, day) {
+            const m = String(month + 1).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            return `${year}-${m}-${d}`;
+        }
+
+        function resetAllCloudData() {
+            if (confirm("Hapus seluruh data keuangan Anda di Cloud? Data tidak dapat dikembalikan.")) {
+                window.state = {
+                    transactions: [],
+                    claimedDays: {},
+                    rewardEvents: [],
+                    sweptDays: {},
+                    accounts: { mandiri: 0, bca: 0, jagoMain: 0, jagoSavings: 0, jagoBills: 0 },
+                    currentMonth: new Date().getMonth(),
+                    currentYear: new Date().getFullYear(),
+                    defaultDailyAllowance: 35000
+                };
+                window.saveStateToCloud();
+            }
+        }
+
+        // --- RENDER ENGINE ---
+        window.renderAll = function() {
+            renderAccounts();
+            renderCalendar();
+            renderRewardList();
+            renderHistory();
+            checkBorosWarning();
+        };
+
+        function renderAccounts() {
+            const accs = window.state.accounts || {};
+            document.getElementById('acc-mandiri').innerText = formatRp(accs.mandiri);
+            document.getElementById('acc-bca').innerText = formatRp(accs.bca);
+            document.getElementById('acc-jago-main').innerText = formatRp(accs.jagoMain);
+            document.getElementById('acc-jago-savings').innerText = formatRp(accs.jagoSavings);
+            document.getElementById('acc-jago-bills').innerText = formatRp(accs.jagoBills);
+
+            const total = (accs.mandiri || 0) + (accs.bca || 0) + (accs.jagoMain || 0) + (accs.jagoSavings || 0) + (accs.jagoBills || 0);
+            document.getElementById('stat-total-assets').innerText = `Total: ${formatRp(total)}`;
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            document.getElementById('calendar-month-year').innerText = `${monthNames[window.state.currentMonth]} ${window.state.currentYear}`;
+
+            const firstDay = new Date(window.state.currentYear, window.state.currentMonth, 1).getDay();
+            const daysInMonth = new Date(window.state.currentYear, window.state.currentMonth + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "h-16 bg-slate-50/50 rounded-xl border border-slate-100/50 opacity-40";
+                grid.appendChild(emptyCell);
+            }
+
+            let monthTotalRemainder = 0;
+            const totalAssets = (window.state.accounts.mandiri || 0) + (window.state.accounts.bca || 0) + (window.state.accounts.jagoMain || 0) + (window.state.accounts.jagoSavings || 0) + (window.state.accounts.jagoBills || 0);
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = formatDateKey(window.state.currentYear, window.state.currentMonth, day);
+                const isClaimed = !!(window.state.claimedDays && window.state.claimedDays[dateKey]);
+                const isToday = (today.getDate() === day && today.getMonth() === window.state.currentMonth && today.getFullYear() === window.state.currentYear);
+                const isPast = new Date(window.state.currentYear, window.state.currentMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                const dayRewards = (window.state.rewardEvents || []).filter(ev => ev.date === dateKey);
+                const dayRemainder = calculateDayRemainder(dateKey);
+
+                if (isPast && !(window.state.sweptDays && window.state.sweptDays[dateKey]) && totalAssets > 0) {
+                    monthTotalRemainder += dayRemainder;
+                }
+
+                const cell = document.createElement('div');
+                let cellClasses = "h-16 rounded-xl p-1 border flex flex-col justify-between cursor-pointer transition relative overflow-hidden ";
+
+                if (isToday) cellClasses += "border-indigo-500 bg-indigo-50/40 font-bold ";
+                else if (dayRewards.length > 0) cellClasses += "border-purple-300 bg-purple-50/70 text-purple-900 ";
+                else if (isClaimed) cellClasses += "border-emerald-200 bg-emerald-50/60 text-emerald-800 ";
+                else if (isPast) cellClasses += "border-amber-200 bg-amber-50/30 text-slate-600 ";
+                else cellClasses += "border-slate-100 bg-white hover:border-slate-200 ";
+
+                cell.className = cellClasses;
+                cell.onclick = () => handleDayClick(dateKey);
+
+                let rewardTagHTML = dayRewards.length > 0 ? `<div class="bg-purple-600 text-white text-[8px] px-1 py-0.5 rounded truncate font-normal mt-0.5">✈️ ${dayRewards[0].title}</div>` : '';
+
+                let subLabelHTML = '35k';
+                if (totalAssets <= 0) {
+                    subLabelHTML = 'Rp 0';
+                } else if (isClaimed) {
+                    if (dayRemainder > 0 && dayRemainder < 35000) {
+                        subLabelHTML = `<span class="text-blue-600 font-bold">Sisa: ${(dayRemainder/1000).toFixed(0)}k</span>`;
+                    } else {
+                        subLabelHTML = 'Diambil';
+                    }
+                }
+
+                cell.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="${isToday ? 'bg-indigo-600 text-white w-4 h-4 rounded-full flex items-center justify-center' : 'text-slate-500'}">${day}</span>
+                        ${isClaimed ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>' : ''}
+                    </div>
+                    ${rewardTagHTML}
+                    <div class="text-[9px] text-center font-medium ${isClaimed ? 'text-emerald-700' : 'text-slate-400'}">
+                        ${subLabelHTML}
+                    </div>
+                `;
+
+                grid.appendChild(cell);
+            }
+
+            document.getElementById('unclaimed-total').innerText = formatRp(monthTotalRemainder);
+        }
+
+        function renderRewardList() {
+            const container = document.getElementById('reward-list');
+            container.innerHTML = '';
+
+            const rewards = window.state.rewardEvents || [];
+            if (rewards.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center">Belum ada agenda self reward dicatat.</p>`;
+                return;
+            }
+
+            rewards.forEach(ev => {
+                const item = document.createElement('div');
+                item.className = "p-2.5 bg-purple-50/60 rounded-xl flex justify-between items-center border border-purple-100 text-xs";
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 bg-purple-200 text-purple-700 rounded-lg flex items-center justify-center font-bold text-xs">${ev.type === 'Mendadak' ? '⚡' : '📅'}</span>
+                        <div>
+                            <p class="font-bold text-purple-900">${ev.title}</p>
+                            <p class="text-[10px] text-purple-600">${ev.date} • ${ev.type} (${accountLabels[ev.account] || 'Tabungan'})</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-purple-800">${formatRp(ev.amount)}</span>
+                        <button onclick="deleteRewardEvent(${ev.id})" class="text-rose-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('transaction-history');
+            container.innerHTML = '';
+
+            const txs = window.state.transactions || [];
+            if (txs.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-solid fa-receipt text-2xl mb-2 text-slate-300"></i>
+                        <p>Belum ada transaksi dicatat.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            txs.forEach(tx => {
+                const item = document.createElement('div');
+                item.className = "p-3 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100 text-xs";
+
+                let badgeColor = "bg-rose-100 text-rose-600", icon = "fa-minus", prefix = "-";
+
+                if (tx.type === 'IN') { badgeColor = "bg-emerald-100 text-emerald-600"; icon = "fa-plus"; prefix = "+"; }
+                else if (tx.type === 'TRANSFER') { badgeColor = "bg-indigo-100 text-indigo-600"; icon = "fa-right-left"; prefix = "⇄"; }
+                else if (tx.type === 'SYSTEM') { badgeColor = "bg-amber-100 text-amber-600"; icon = "fa-arrows-rotate"; prefix = ""; }
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center font-bold">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700">${tx.title}</p>
+                            <p class="text-[10px] text-slate-400">${tx.date} ${tx.note ? '• ' + tx.note : ''}</p>
+                        </div>
+                    </div>
+                    <div class="font-bold ${tx.type === 'IN' ? 'text-emerald-600' : tx.type === 'OUT' ? 'text-rose-600' : 'text-indigo-600'}">
+                        ${prefix} ${formatRp(tx.amount)}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function checkBorosWarning() {
+            const banner = document.getElementById('alert-banner');
+            const icon = document.getElementById('alert-icon');
+            const title = document.getElementById('alert-title');
+            const desc = document.getElementById('alert-desc');
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayExpenses = (window.state.transactions || [])
+                .filter(t => t.type === 'OUT' && t.date === todayStr && t.category === 'MakanJajan')
+                .reduce((acc, curr) => acc + curr.amount, 0);
+
+            if (todayExpenses > 40000) {
+                banner.className = "rounded-2xl p-4 bg-rose-50 border border-rose-200 text-rose-800";
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-600"></i>';
+                title.innerText = "Peringatan Boros!";
+                desc.innerText = `Pengeluaran makan/jajan hari ini (${formatRp(todayExpenses)}) melebihi Rp 40.000. Hemat sisa uang Anda!`;
+                banner.classList.remove('hidden');
+            } else if ((window.state.accounts.jagoMain || 0) < 0) {
+                banner.className = "rounded-2xl p-4 bg-amber-50 border border-amber-200 text-amber-800";
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-600"></i>';
+                title.innerText = "Saldo Jago Utama Menipis!";
+                desc.innerText = "Pengeluaran harian melebihi saldo Kantong Utama Jago Anda.";
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
+```
