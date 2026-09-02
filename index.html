@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -121,6 +122,7 @@
             unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
                 if (docSnap.exists()) {
                     window.state = docSnap.data();
+                    // Migrasi akun jika belum ada kantong affiliate / wirausaha
                     if (!window.state.accounts.jagoAffiliate) window.state.accounts.jagoAffiliate = 0;
                     if (!window.state.accounts.jagoBusiness) window.state.accounts.jagoBusiness = 0;
                 } else {
@@ -691,4 +693,562 @@
             'bca': 'BCA',
             'jago-main': 'Jago Utama',
             'jago-savings': 'Jago Tabungan',
-            'jago-bills': 'Jago Tag
+            'jago-bills': 'Jago Tagihan',
+            'jago-affiliate': 'Jago Affiliate',
+            'jago-business': 'Jago Wirausaha'
+        };
+
+        window.onload = function() {
+            initMotivationalQuote();
+            document.getElementById('exp-date').value = new Date().toISOString().split('T')[0];
+        };
+
+        function initMotivationalQuote() {
+            const randomIndex = Math.floor(Math.random() * quotes.length);
+            const quoteElem = document.getElementById('motivational-quote');
+            if (quoteElem) quoteElem.querySelector('span').innerText = quotes[randomIndex];
+        }
+
+        function formatRp(val) {
+            return "Rp " + Math.round(val || 0).toLocaleString('id-ID');
+        }
+
+        function switchTab(tab) {
+            const btnIn = document.getElementById('btn-tab-in');
+            const btnOut = document.getElementById('btn-tab-out');
+            const formIn = document.getElementById('form-income');
+            const formOut = document.getElementById('form-expense');
+
+            if (tab === 'in') {
+                btnIn.className = "flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition";
+                btnOut.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition";
+                formIn.classList.remove('hidden');
+                formOut.classList.add('hidden');
+            } else {
+                btnOut.className = "flex-1 pb-3 text-sm font-semibold text-rose-600 border-b-2 border-rose-600 transition";
+                btnIn.className = "flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition";
+                formOut.classList.remove('hidden');
+                formIn.classList.add('hidden');
+            }
+        }
+
+        function toggleAutoSplitNotice() {
+            const target = document.getElementById('inc-target-account').value;
+            document.getElementById('jago-split-info').classList.toggle('hidden', target !== 'jago-auto');
+        }
+
+        function handleAddIncome(e) {
+            e.preventDefault();
+            const source = document.getElementById('inc-source').value;
+            const amount = parseFloat(document.getElementById('inc-amount').value);
+            const targetAcc = document.getElementById('inc-target-account').value;
+
+            if (!amount || amount <= 0) return;
+
+            let noteText = '';
+
+            if (targetAcc === 'jago-auto') {
+                window.state.accounts.jagoSavings += (amount * 0.40);
+                window.state.accounts.jagoMain += (amount * 0.50);
+                window.state.accounts.jagoBills += (amount * 0.10);
+                noteText = `Split Jago: Tabungan 40%, Utama 50%, Tagihan 10%`;
+            } else if (targetAcc === 'mandiri') {
+                window.state.accounts.mandiri += amount;
+                noteText = 'Masuk ke Bank Mandiri';
+            } else if (targetAcc === 'bca') {
+                window.state.accounts.bca += amount;
+                noteText = 'Masuk ke Bank BCA';
+            } else if (targetAcc === 'jago-savings') {
+                window.state.accounts.jagoSavings += amount;
+                noteText = 'Masuk ke Jago Tabungan';
+            } else if (targetAcc === 'jago-main') {
+                window.state.accounts.jagoMain += amount;
+                noteText = 'Masuk ke Jago Utama';
+            } else if (targetAcc === 'jago-bills') {
+                window.state.accounts.jagoBills += amount;
+                noteText = 'Masuk ke Jago Tagihan';
+            } else if (targetAcc === 'jago-affiliate') {
+                window.state.accounts.jagoAffiliate += amount;
+                noteText = 'Masuk ke Jago Kantong Affiliate';
+            } else if (targetAcc === 'jago-business') {
+                window.state.accounts.jagoBusiness += amount;
+                noteText = 'Masuk ke Jago Kantong Wirausaha';
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'IN',
+                title: `Masuk: ${source}`,
+                amount: amount,
+                date: todayStr,
+                note: noteText
+            });
+
+            document.getElementById('inc-amount').value = '';
+            window.saveStateToCloud();
+        }
+
+        function handleAddExpense(e) {
+            e.preventDefault();
+            const date = document.getElementById('exp-date').value || new Date().toISOString().split('T')[0];
+            const category = document.getElementById('exp-category').value;
+            const account = document.getElementById('exp-account').value;
+            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const note = document.getElementById('exp-note').value || category;
+
+            if (!amount || amount <= 0) return;
+
+            if (account === 'mandiri') window.state.accounts.mandiri -= amount;
+            else if (account === 'bca') window.state.accounts.bca -= amount;
+            else if (account === 'jago-main') window.state.accounts.jagoMain -= amount;
+            else if (account === 'jago-savings') window.state.accounts.jagoSavings -= amount;
+            else if (account === 'jago-bills') window.state.accounts.jagoBills -= amount;
+            else if (account === 'jago-affiliate') window.state.accounts.jagoAffiliate -= amount;
+            else if (account === 'jago-business') window.state.accounts.jagoBusiness -= amount;
+
+            if (category === 'MakanJajan') {
+                window.state.claimedDays[date] = true;
+            }
+
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'OUT',
+                title: `${category} - ${note}`,
+                amount: amount,
+                date: date,
+                category: category,
+                note: `Dibayar pakai ${accountLabels[account]}`
+            });
+
+            document.getElementById('exp-amount').value = '';
+            document.getElementById('exp-note').value = '';
+            window.saveStateToCloud();
+        }
+
+        function openTransferModal() { document.getElementById('modal-transfer-form').classList.remove('hidden'); }
+        function closeTransferModal() {
+            document.getElementById('modal-transfer-form').classList.add('hidden');
+            document.getElementById('trf-amount').value = '';
+            document.getElementById('trf-admin-fee').value = '0';
+        }
+
+        function handleExecuteTransfer(e) {
+            e.preventDefault();
+            const fromAcc = document.getElementById('trf-from').value;
+            const toAcc = document.getElementById('trf-to').value;
+            const amount = parseFloat(document.getElementById('trf-amount').value);
+            const adminFee = parseFloat(document.getElementById('trf-admin-fee').value) || 0;
+            const note = document.getElementById('trf-note').value;
+
+            if (fromAcc === toAcc) { alert("Rekening pengirim dan penerima tidak boleh sama!"); return; }
+            if (!amount || amount <= 0) return;
+
+            const totalDeduction = amount + adminFee;
+
+            if (fromAcc === 'mandiri') window.state.accounts.mandiri -= totalDeduction;
+            else if (fromAcc === 'bca') window.state.accounts.bca -= totalDeduction;
+            else if (fromAcc === 'jago-main') window.state.accounts.jagoMain -= totalDeduction;
+            else if (fromAcc === 'jago-savings') window.state.accounts.jagoSavings -= totalDeduction;
+            else if (fromAcc === 'jago-bills') window.state.accounts.jagoBills -= totalDeduction;
+            else if (fromAcc === 'jago-affiliate') window.state.accounts.jagoAffiliate -= totalDeduction;
+            else if (fromAcc === 'jago-business') window.state.accounts.jagoBusiness -= totalDeduction;
+
+            if (toAcc === 'mandiri') window.state.accounts.mandiri += amount;
+            else if (toAcc === 'bca') window.state.accounts.bca += amount;
+            else if (toAcc === 'jago-main') window.state.accounts.jagoMain += amount;
+            else if (toAcc === 'jago-savings') window.state.accounts.jagoSavings += amount;
+            else if (toAcc === 'jago-bills') window.state.accounts.jagoBills += amount;
+            else if (toAcc === 'jago-affiliate') window.state.accounts.jagoAffiliate += amount;
+            else if (toAcc === 'jago-business') window.state.accounts.jagoBusiness += amount;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            let noteDetail = note ? note : `Transfer dari ${accountLabels[fromAcc]} ke ${accountLabels[toAcc]}`;
+            if (adminFee > 0) noteDetail += ` (Admin Fee: ${formatRp(adminFee)})`;
+
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'TRANSFER',
+                title: `Transfer: ${accountLabels[fromAcc]} ➔ ${accountLabels[toAcc]}`,
+                amount: amount,
+                adminFee: adminFee,
+                date: todayStr,
+                note: noteDetail
+            });
+
+            closeTransferModal();
+            window.saveStateToCloud();
+        }
+
+        function calculateDayRemainder(dateStr) {
+            const dayExpenses = window.state.transactions
+                .filter(t => t.type === 'OUT' && t.date === dateStr && t.category === 'MakanJajan')
+                .reduce((acc, curr) => acc + curr.amount, 0);
+
+            const isClaimed = !!window.state.claimedDays[dateStr];
+            if (!isClaimed) return window.state.defaultDailyAllowance;
+            const remainder = window.state.defaultDailyAllowance - dayExpenses;
+            return remainder > 0 ? remainder : 0;
+        }
+
+        function handleDayClick(dateStr) {
+            window.state.selectedDateKey = dateStr;
+            document.getElementById('modal-date-title').innerText = `Opsi Tanggal: ${dateStr}`;
+            const isClaimed = !!window.state.claimedDays[dateStr];
+            document.getElementById('label-modal-claim').innerText = isClaimed ? 'Batalkan Klaim Jatah Harian' : 'Klaim Jatah Harian (35k)';
+            document.getElementById('modal-date-action').classList.remove('hidden');
+        }
+
+        function closeDateModal() { document.getElementById('modal-date-action').classList.add('hidden'); }
+
+        function actionToggleClaim() {
+            if (!window.state.selectedDateKey) return;
+            const dateStr = window.state.selectedDateKey;
+            if (window.state.claimedDays[dateStr]) {
+                delete window.state.claimedDays[dateStr];
+            } else {
+                window.state.claimedDays[dateStr] = true;
+            }
+            closeDateModal();
+            window.saveStateToCloud();
+        }
+
+        function actionOpenRewardFromDate() {
+            const dateStr = window.state.selectedDateKey;
+            closeDateModal();
+            document.getElementById('rew-date').value = dateStr;
+            openAddRewardModal();
+        }
+
+        function openAddRewardModal() {
+            if (!document.getElementById('rew-date').value) {
+                document.getElementById('rew-date').value = new Date().toISOString().split('T')[0];
+            }
+            document.getElementById('modal-reward-form').classList.remove('hidden');
+        }
+
+        function closeRewardModal() {
+            document.getElementById('modal-reward-form').classList.add('hidden');
+            document.getElementById('rew-title').value = '';
+            document.getElementById('rew-amount').value = '';
+        }
+
+        function handleSaveRewardEvent(e) {
+            e.preventDefault();
+            const title = document.getElementById('rew-title').value;
+            const date = document.getElementById('rew-date').value;
+            const amount = parseFloat(document.getElementById('rew-amount').value);
+            const type = document.getElementById('rew-type').value;
+            const account = document.getElementById('rew-account').value;
+
+            if (!amount || amount <= 0) return;
+
+            window.state.rewardEvents.unshift({ id: Date.now(), title, date, amount, type, account });
+
+            if (account === 'mandiri') window.state.accounts.mandiri -= amount;
+            else if (account === 'bca') window.state.accounts.bca -= amount;
+            else if (account === 'jago-main') window.state.accounts.jagoMain -= amount;
+            else if (account === 'jago-savings') window.state.accounts.jagoSavings -= amount;
+            else if (account === 'jago-affiliate') window.state.accounts.jagoAffiliate -= amount;
+            else if (account === 'jago-business') window.state.accounts.jagoBusiness -= amount;
+
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'OUT',
+                title: `Self Reward (${type}): ${title}`,
+                amount: amount,
+                date: date,
+                category: 'SelfReward',
+                note: `Dipotong dari ${accountLabels[account]}`
+            });
+
+            closeRewardModal();
+            window.saveStateToCloud();
+        }
+
+        function deleteRewardEvent(id) {
+            if (confirm("Hapus agenda self reward ini?")) {
+                window.state.rewardEvents = window.state.rewardEvents.filter(ev => ev.id !== id);
+                window.saveStateToCloud();
+            }
+        }
+
+        function changeMonth(delta) {
+            window.state.currentMonth += delta;
+            if (window.state.currentMonth < 0) {
+                window.state.currentMonth = 11;
+                window.state.currentYear--;
+            } else if (window.state.currentMonth > 11) {
+                window.state.currentMonth = 0;
+                window.state.currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function sweepUnclaimedToSavings() {
+            const today = new Date();
+            const daysInMonth = new Date(window.state.currentYear, window.state.currentMonth + 1, 0).getDate();
+            let totalSweepAmount = 0;
+            let fullDays = 0, partialDays = 0;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const checkDate = new Date(window.state.currentYear, window.state.currentMonth, d);
+                if (checkDate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                    const dateStr = formatDateKey(window.state.currentYear, window.state.currentMonth, d);
+                    if (!window.state.sweptDays[dateStr]) {
+                        const remainder = calculateDayRemainder(dateStr);
+                        if (remainder > 0) {
+                            totalSweepAmount += remainder;
+                            if (!window.state.claimedDays[dateStr]) fullDays++;
+                            else partialDays++;
+                        }
+                        window.state.sweptDays[dateStr] = true;
+                    }
+                }
+            }
+
+            if (totalSweepAmount === 0) {
+                alert("Tidak ada sisa jatah harian yang perlu disapu.");
+                return;
+            }
+
+            window.state.accounts.jagoMain -= totalSweepAmount;
+            window.state.accounts.jagoSavings += totalSweepAmount;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            window.state.transactions.unshift({
+                id: Date.now(),
+                type: 'SYSTEM',
+                title: 'Sapu Bersih ke Kantong Tabungan',
+                amount: totalSweepAmount,
+                date: todayStr,
+                note: `Sapu bersih ${fullDays} hari utuh & ${partialDays} sisa pecahan`
+            });
+
+            window.saveStateToCloud();
+        }
+
+        function formatDateKey(year, month, day) {
+            const m = String(month + 1).padStart(2, '0');
+            const d = String(day).padStart(2, '0');
+            return `${year}-${m}-${d}`;
+        }
+
+        function resetAllCloudData() {
+            if (confirm("Hapus seluruh data keuangan Anda di Cloud? Data tidak dapat dikembalikan.")) {
+                window.state = {
+                    transactions: [],
+                    claimedDays: {},
+                    rewardEvents: [],
+                    sweptDays: {},
+                    accounts: { mandiri: 0, bca: 0, jagoMain: 0, jagoSavings: 0, jagoBills: 0, jagoAffiliate: 0, jagoBusiness: 0 },
+                    currentMonth: new Date().getMonth(),
+                    currentYear: new Date().getFullYear(),
+                    defaultDailyAllowance: 35000
+                };
+                window.saveStateToCloud();
+            }
+        }
+
+        // --- RENDER ENGINE ---
+        window.renderAll = function() {
+            renderAccounts();
+            renderCalendar();
+            renderRewardList();
+            renderHistory();
+            checkBorosWarning();
+        };
+
+        function renderAccounts() {
+            const accs = window.state.accounts || {};
+            document.getElementById('acc-mandiri').innerText = formatRp(accs.mandiri);
+            document.getElementById('acc-bca').innerText = formatRp(accs.bca);
+            document.getElementById('acc-jago-main').innerText = formatRp(accs.jagoMain);
+            document.getElementById('acc-jago-savings').innerText = formatRp(accs.jagoSavings);
+            document.getElementById('acc-jago-bills').innerText = formatRp(accs.jagoBills);
+            document.getElementById('acc-jago-affiliate').innerText = formatRp(accs.jagoAffiliate);
+            document.getElementById('acc-jago-business').innerText = formatRp(accs.jagoBusiness);
+
+            const total = (accs.mandiri || 0) + (accs.bca || 0) + (accs.jagoMain || 0) + (accs.jagoSavings || 0) + (accs.jagoBills || 0) + (accs.jagoAffiliate || 0) + (accs.jagoBusiness || 0);
+            document.getElementById('stat-total-assets').innerText = `Total: ${formatRp(total)}`;
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            document.getElementById('calendar-month-year').innerText = `${monthNames[window.state.currentMonth]} ${window.state.currentYear}`;
+
+            const firstDay = new Date(window.state.currentYear, window.state.currentMonth, 1).getDay();
+            const daysInMonth = new Date(window.state.currentYear, window.state.currentMonth + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 0; i < firstDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = "h-16 bg-slate-50/50 rounded-xl border border-slate-100/50 opacity-40";
+                grid.appendChild(emptyCell);
+            }
+
+            let monthTotalRemainder = 0;
+            const accs = window.state.accounts || {};
+            const totalAssets = (accs.mandiri || 0) + (accs.bca || 0) + (accs.jagoMain || 0) + (accs.jagoSavings || 0) + (accs.jagoBills || 0) + (accs.jagoAffiliate || 0) + (accs.jagoBusiness || 0);
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = formatDateKey(window.state.currentYear, window.state.currentMonth, day);
+                const isClaimed = !!(window.state.claimedDays && window.state.claimedDays[dateKey]);
+                const isToday = (today.getDate() === day && today.getMonth() === window.state.currentMonth && today.getFullYear() === window.state.currentYear);
+                const isPast = new Date(window.state.currentYear, window.state.currentMonth, day) < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+                const dayRewards = (window.state.rewardEvents || []).filter(ev => ev.date === dateKey);
+                const dayRemainder = calculateDayRemainder(dateKey);
+
+                if (isPast && !(window.state.sweptDays && window.state.sweptDays[dateKey]) && totalAssets > 0) {
+                    monthTotalRemainder += dayRemainder;
+                }
+
+                const cell = document.createElement('div');
+                let cellClasses = "h-16 rounded-xl p-1 border flex flex-col justify-between cursor-pointer transition relative overflow-hidden ";
+
+                if (isToday) cellClasses += "border-indigo-500 bg-indigo-50/40 font-bold ";
+                else if (dayRewards.length > 0) cellClasses += "border-purple-300 bg-purple-50/70 text-purple-900 ";
+                else if (isClaimed) cellClasses += "border-emerald-200 bg-emerald-50/60 text-emerald-800 ";
+                else if (isPast) cellClasses += "border-amber-200 bg-amber-50/30 text-slate-600 ";
+                else cellClasses += "border-slate-100 bg-white hover:border-slate-200 ";
+
+                cell.className = cellClasses;
+                cell.onclick = () => handleDayClick(dateKey);
+
+                let rewardTagHTML = dayRewards.length > 0 ? `<div class="bg-purple-600 text-white text-[8px] px-1 py-0.5 rounded truncate font-normal mt-0.5">✈️ ${dayRewards[0].title}</div>` : '';
+
+                let subLabelHTML = '35k';
+                if (totalAssets <= 0) {
+                    subLabelHTML = 'Rp 0';
+                } else if (isClaimed) {
+                    if (dayRemainder > 0 && dayRemainder < 35000) {
+                        subLabelHTML = `<span class="text-blue-600 font-bold">Sisa: ${(dayRemainder/1000).toFixed(0)}k</span>`;
+                    } else {
+                        subLabelHTML = 'Diambil';
+                    }
+                }
+
+                cell.innerHTML = `
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="${isToday ? 'bg-indigo-600 text-white w-4 h-4 rounded-full flex items-center justify-center' : 'text-slate-500'}">${day}</span>
+                        ${isClaimed ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>' : ''}
+                    </div>
+                    ${rewardTagHTML}
+                    <div class="text-[9px] text-center font-medium ${isClaimed ? 'text-emerald-700' : 'text-slate-400'}">
+                        ${subLabelHTML}
+                    </div>
+                `;
+
+                grid.appendChild(cell);
+            }
+
+            document.getElementById('unclaimed-total').innerText = formatRp(monthTotalRemainder);
+        }
+
+        function renderRewardList() {
+            const container = document.getElementById('reward-list');
+            container.innerHTML = '';
+
+            const rewards = window.state.rewardEvents || [];
+            if (rewards.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center">Belum ada agenda self reward dicatat.</p>`;
+                return;
+            }
+
+            rewards.forEach(ev => {
+                const item = document.createElement('div');
+                item.className = "p-2.5 bg-purple-50/60 rounded-xl flex justify-between items-center border border-purple-100 text-xs";
+                item.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-7 h-7 bg-purple-200 text-purple-700 rounded-lg flex items-center justify-center font-bold text-xs">${ev.type === 'Mendadak' ? '⚡' : '📅'}</span>
+                        <div>
+                            <p class="font-bold text-purple-900">${ev.title}</p>
+                            <p class="text-[10px] text-purple-600">${ev.date} • ${ev.type} (${accountLabels[ev.account] || 'Tabungan'})</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-purple-800">${formatRp(ev.amount)}</span>
+                        <button onclick="deleteRewardEvent(${ev.id})" class="text-rose-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('transaction-history');
+            container.innerHTML = '';
+
+            const txs = window.state.transactions || [];
+            if (txs.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i class="fa-solid fa-receipt text-2xl mb-2 text-slate-300"></i>
+                        <p>Belum ada transaksi dicatat.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            txs.forEach(tx => {
+                const item = document.createElement('div');
+                item.className = "p-3 bg-slate-50 rounded-xl flex justify-between items-center border border-slate-100 text-xs";
+
+                let badgeColor = "bg-rose-100 text-rose-600", icon = "fa-minus", prefix = "-";
+
+                if (tx.type === 'IN') { badgeColor = "bg-emerald-100 text-emerald-600"; icon = "fa-plus"; prefix = "+"; }
+                else if (tx.type === 'TRANSFER') { badgeColor = "bg-indigo-100 text-indigo-600"; icon = "fa-right-left"; prefix = "⇄"; }
+                else if (tx.type === 'SYSTEM') { badgeColor = "bg-amber-100 text-amber-600"; icon = "fa-arrows-rotate"; prefix = ""; }
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg ${badgeColor} flex items-center justify-center font-bold">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700">${tx.title}</p>
+                            <p class="text-[10px] text-slate-400">${tx.date} ${tx.note ? '• ' + tx.note : ''}</p>
+                        </div>
+                    </div>
+                    <div class="font-bold ${tx.type === 'IN' ? 'text-emerald-600' : tx.type === 'OUT' ? 'text-rose-600' : 'text-indigo-600'}">
+                        ${prefix} ${formatRp(tx.amount)}
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function checkBorosWarning() {
+            const banner = document.getElementById('alert-banner');
+            const icon = document.getElementById('alert-icon');
+            const title = document.getElementById('alert-title');
+            const desc = document.getElementById('alert-desc');
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayExpenses = (window.state.transactions || [])
+                .filter(t => t.type === 'OUT' && t.date === todayStr && t.category === 'MakanJajan')
+                .reduce((acc, curr) => acc + curr.amount, 0);
+
+            if (todayExpenses > 40000) {
+                banner.className = "rounded-2xl p-4 bg-rose-50 border border-rose-200 text-rose-800";
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-rose-600"></i>';
+                title.innerText = "Peringatan Boros!";
+                desc.innerText = `Pengeluaran makan/jajan hari ini (${formatRp(todayExpenses)}) melebihi Rp 40.000. Hemat sisa uang Anda!`;
+                banner.classList.remove('hidden');
+            } else if ((window.state.accounts.jagoMain || 0) < 0) {
+                banner.className = "rounded-2xl p-4 bg-amber-50 border border-amber-200 text-amber-800";
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-600"></i>';
+                title.innerText = "Saldo Jago Utama Menipis!";
+                desc.innerText = "Pengeluaran harian melebihi saldo Kantong Utama Jago Anda.";
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
+```
