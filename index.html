@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -31,7 +30,6 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Konfigurasi Firebase resmi milik Anda (fintracker-personal-cad98)
         const firebaseConfig = {
             apiKey: "AIzaSyB_BlBGS7u4PlQRAn7J-d0d16iI_86E9pg",
             authDomain: "fintracker-personal-cad98.firebaseapp.com",
@@ -121,10 +119,25 @@
             const userDocRef = doc(db, "users", uid);
             unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
                 if (docSnap.exists()) {
-                    window.state = docSnap.data();
-                    // Migrasi akun jika belum ada kantong affiliate / wirausaha
-                    if (!window.state.accounts.jagoAffiliate) window.state.accounts.jagoAffiliate = 0;
-                    if (!window.state.accounts.jagoBusiness) window.state.accounts.jagoBusiness = 0;
+                    const cloudData = docSnap.data();
+                    window.state = {
+                        transactions: cloudData.transactions || [],
+                        claimedDays: cloudData.claimedDays || {},
+                        rewardEvents: cloudData.rewardEvents || [],
+                        sweptDays: cloudData.sweptDays || {},
+                        accounts: { 
+                            mandiri: Number(cloudData.accounts?.mandiri || 0), 
+                            bca: Number(cloudData.accounts?.bca || 0), 
+                            jagoMain: Number(cloudData.accounts?.jagoMain || 0), 
+                            jagoSavings: Number(cloudData.accounts?.jagoSavings || 0), 
+                            jagoBills: Number(cloudData.accounts?.jagoBills || 0),
+                            jagoAffiliate: Number(cloudData.accounts?.jagoAffiliate || 0),
+                            jagoBusiness: Number(cloudData.accounts?.jagoBusiness || 0)
+                        },
+                        currentMonth: window.state?.currentMonth ?? new Date().getMonth(),
+                        currentYear: window.state?.currentYear ?? new Date().getFullYear(),
+                        defaultDailyAllowance: 35000
+                    };
                 } else {
                     window.state = {
                         transactions: [],
@@ -132,13 +145,7 @@
                         rewardEvents: [],
                         sweptDays: {},
                         accounts: { 
-                            mandiri: 0, 
-                            bca: 0, 
-                            jagoMain: 0, 
-                            jagoSavings: 0, 
-                            jagoBills: 0,
-                            jagoAffiliate: 0,
-                            jagoBusiness: 0
+                            mandiri: 0, bca: 0, jagoMain: 0, jagoSavings: 0, jagoBills: 0, jagoAffiliate: 0, jagoBusiness: 0
                         },
                         currentMonth: new Date().getMonth(),
                         currentYear: new Date().getFullYear(),
@@ -155,7 +162,22 @@
         window.saveStateToCloud = async function() {
             if (!currentUser) return;
             try {
-                await setDoc(doc(db, "users", currentUser.uid), window.state);
+                const dataToSave = {
+                    transactions: window.state.transactions || [],
+                    claimedDays: window.state.claimedDays || {},
+                    rewardEvents: window.state.rewardEvents || [],
+                    sweptDays: window.state.sweptDays || {},
+                    accounts: {
+                        mandiri: Number(window.state.accounts.mandiri || 0),
+                        bca: Number(window.state.accounts.bca || 0),
+                        jagoMain: Number(window.state.accounts.jagoMain || 0),
+                        jagoSavings: Number(window.state.accounts.jagoSavings || 0),
+                        jagoBills: Number(window.state.accounts.jagoBills || 0),
+                        jagoAffiliate: Number(window.state.accounts.jagoAffiliate || 0),
+                        jagoBusiness: Number(window.state.accounts.jagoBusiness || 0)
+                    }
+                };
+                await setDoc(doc(db, "users", currentUser.uid), dataToSave);
             } catch (err) {
                 console.error("Gagal menyimpan ke Cloud:", err);
             }
@@ -318,10 +340,10 @@
                 <!-- Input Transaksi Form -->
                 <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                     <div class="flex border-b border-slate-100 mb-4">
-                        <button id="btn-tab-in" onclick="switchTab('in')" class="flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition">
+                        <button id="btn-tab-in" type="button" onclick="switchTab('in')" class="flex-1 pb-3 text-sm font-semibold text-teal-600 border-b-2 border-teal-600 transition">
                             <i class="fa-solid fa-plus-circle me-1"></i> Uang Masuk
                         </button>
-                        <button id="btn-tab-out" onclick="switchTab('out')" class="flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition">
+                        <button id="btn-tab-out" type="button" onclick="switchTab('out')" class="flex-1 pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 border-b-2 border-transparent transition">
                             <i class="fa-solid fa-minus-circle me-1"></i> Pengeluaran
                         </button>
                     </div>
@@ -447,12 +469,12 @@
                             <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
                                 <i class="fa-solid fa-calendar-check text-indigo-600"></i> Kalender Jatah Harian & Self Reward
                             </h2>
-                            <p class="text-xs text-slate-500">Sisa pecahan harian disapu dari Kantong Utama ke **Kantong Tabungan Jago**.</p>
+                            <p class="text-xs text-slate-500">Jatah harian aktif jika saldo Kantong Utama mencukupi. Sisa pecahan harian disapu ke tabungan.</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button type="button" onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-left"></i></button>
                             <span id="calendar-month-year" class="text-xs font-bold text-slate-700 min-w-[100px] text-center">-- ----</span>
-                            <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-right"></i></button>
+                            <button type="button" onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-lg text-slate-600 text-xs"><i class="fa-solid fa-chevron-right"></i></button>
                         </div>
                     </div>
 
@@ -462,8 +484,8 @@
                             <span class="text-slate-700">Jatah Diambil</span>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
-                            <span class="text-slate-700">Ada Sisa Pecahan</span>
+                            <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span>
+                            <span class="text-slate-700">Tidak Ada Saldo (0 Jatah)</span>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <span class="w-3 h-3 rounded-full bg-purple-600 inline-block"></span>
@@ -487,7 +509,7 @@
                             Total Sisa Hemat Bulan Ini: <br>
                             <span id="unclaimed-total" class="font-bold text-emerald-600 text-sm">Rp 0</span>
                         </div>
-                        <button onclick="sweepUnclaimedToSavings()" class="text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3.5 py-2 rounded-xl transition shadow-sm">
+                        <button type="button" onclick="sweepUnclaimedToSavings()" class="text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3.5 py-2 rounded-xl transition shadow-sm">
                             <i class="fa-solid fa-broom me-1.5"></i> Sapu Bersih Ke Kantong Tabungan
                         </button>
                     </div>
@@ -498,7 +520,7 @@
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-plane-departure text-purple-600"></i> Agenda Self Reward / Liburan
                         </h3>
-                        <button onclick="openAddRewardModal()" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
+                        <button type="button" onclick="openAddRewardModal()" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold px-3 py-1.5 rounded-lg transition">
                             <i class="fa-solid fa-plus me-1"></i> Tambah Agenda
                         </button>
                     </div>
@@ -510,7 +532,7 @@
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-list-check text-slate-500"></i> Riwayat Transaksi Rekening
                         </h3>
-                        <button onclick="resetAllCloudData()" class="text-xs text-rose-500 hover:underline">Reset Data Cloud</button>
+                        <button type="button" onclick="resetAllCloudData()" class="text-xs text-rose-500 hover:underline">Reset Data Cloud</button>
                     </div>
 
                     <div class="overflow-y-auto max-h-[250px] custom-scrollbar space-y-2 pr-1" id="transaction-history"></div>
@@ -528,7 +550,7 @@
                 <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-right-left text-indigo-600"></i> Pindahkan Uang / Transfer Rekening
                 </h3>
-                <button onclick="closeTransferModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="closeTransferModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <form onsubmit="handleExecuteTransfer(event)" class="space-y-3">
@@ -587,19 +609,19 @@
         <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl border border-slate-100 space-y-4">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <h3 id="modal-date-title" class="font-bold text-sm text-slate-800">Tanggal: --</h3>
-                <button onclick="closeDateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="closeDateModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <div class="space-y-3">
-                <button onclick="actionToggleClaim()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-check"></i></span>
+                <button id="btn-modal-claim" type="button" onclick="actionToggleClaim()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition flex items-center gap-3">
+                    <span id="icon-modal-claim-box" class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-check"></i></span>
                     <div>
                         <p id="label-modal-claim" class="text-xs font-bold text-slate-700">Klaim Jatah Harian (35k)</p>
-                        <p class="text-[10px] text-slate-500">Tandai jatah harian diambil di tanggal ini</p>
+                        <p id="desc-modal-claim" class="text-[10px] text-slate-500">Tandai jatah harian diambil di tanggal ini</p>
                     </div>
                 </button>
 
-                <button onclick="actionOpenRewardFromDate()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition flex items-center gap-3">
+                <button type="button" onclick="actionOpenRewardFromDate()" class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 transition flex items-center gap-3">
                     <span class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs"><i class="fa-solid fa-gift"></i></span>
                     <div>
                         <p class="text-xs font-bold text-slate-700">Tambah Self Reward / Liburan</p>
@@ -617,7 +639,7 @@
                 <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-plane-departure text-purple-600"></i> Agenda Self Reward / Liburan
                 </h3>
-                <button onclick="closeRewardModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+                <button type="button" onclick="closeRewardModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <form onsubmit="handleSaveRewardEvent(event)" class="space-y-3">
@@ -710,7 +732,7 @@
         }
 
         function formatRp(val) {
-            return "Rp " + Math.round(val || 0).toLocaleString('id-ID');
+            return "Rp " + Math.round(Number(val) || 0).toLocaleString('id-ID');
         }
 
         function switchTab(tab) {
@@ -740,7 +762,7 @@
         function handleAddIncome(e) {
             e.preventDefault();
             const source = document.getElementById('inc-source').value;
-            const amount = parseFloat(document.getElementById('inc-amount').value);
+            const amount = Number(document.getElementById('inc-amount').value);
             const targetAcc = document.getElementById('inc-target-account').value;
 
             if (!amount || amount <= 0) return;
@@ -794,7 +816,7 @@
             const date = document.getElementById('exp-date').value || new Date().toISOString().split('T')[0];
             const category = document.getElementById('exp-category').value;
             const account = document.getElementById('exp-account').value;
-            const amount = parseFloat(document.getElementById('exp-amount').value);
+            const amount = Number(document.getElementById('exp-amount').value);
             const note = document.getElementById('exp-note').value || category;
 
             if (!amount || amount <= 0) return;
@@ -837,8 +859,8 @@
             e.preventDefault();
             const fromAcc = document.getElementById('trf-from').value;
             const toAcc = document.getElementById('trf-to').value;
-            const amount = parseFloat(document.getElementById('trf-amount').value);
-            const adminFee = parseFloat(document.getElementById('trf-admin-fee').value) || 0;
+            const amount = Number(document.getElementById('trf-amount').value);
+            const adminFee = Number(document.getElementById('trf-admin-fee').value) || 0;
             const note = document.getElementById('trf-note').value;
 
             if (fromAcc === toAcc) { alert("Rekening pengirim dan penerima tidak boleh sama!"); return; }
@@ -881,9 +903,14 @@
         }
 
         function calculateDayRemainder(dateStr) {
+            // Jika saldo Kantong Utama Jago kosong atau minus, jatah harian otomatis 0
+            if (Number(window.state.accounts.jagoMain || 0) <= 0) {
+                return 0;
+            }
+
             const dayExpenses = window.state.transactions
                 .filter(t => t.type === 'OUT' && t.date === dateStr && t.category === 'MakanJajan')
-                .reduce((acc, curr) => acc + curr.amount, 0);
+                .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
             const isClaimed = !!window.state.claimedDays[dateStr];
             if (!isClaimed) return window.state.defaultDailyAllowance;
@@ -894,8 +921,30 @@
         function handleDayClick(dateStr) {
             window.state.selectedDateKey = dateStr;
             document.getElementById('modal-date-title').innerText = `Opsi Tanggal: ${dateStr}`;
+            
             const isClaimed = !!window.state.claimedDays[dateStr];
-            document.getElementById('label-modal-claim').innerText = isClaimed ? 'Batalkan Klaim Jatah Harian' : 'Klaim Jatah Harian (35k)';
+            const jagoMainBalance = Number(window.state.accounts.jagoMain || 0);
+            const btnClaim = document.getElementById('btn-modal-claim');
+            const labelClaim = document.getElementById('label-modal-claim');
+            const descClaim = document.getElementById('desc-modal-claim');
+            const iconBox = document.getElementById('icon-modal-claim-box');
+
+            if (jagoMainBalance <= 0 && !isClaimed) {
+                btnClaim.disabled = true;
+                btnClaim.className = "w-full text-left p-3 rounded-xl border border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed flex items-center gap-3";
+                iconBox.className = "w-8 h-8 rounded-lg bg-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs";
+                iconBox.innerHTML = '<i class="fa-solid fa-ban"></i>';
+                labelClaim.innerText = "Tidak Ada Jatah (Uang Habis)";
+                descClaim.innerText = "Saldo Kantong Utama Jago Rp 0 atau minus.";
+            } else {
+                btnClaim.disabled = false;
+                btnClaim.className = "w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50 transition flex items-center gap-3 cursor-pointer";
+                iconBox.className = "w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs";
+                iconBox.innerHTML = '<i class="fa-solid fa-check"></i>';
+                labelClaim.innerText = isClaimed ? 'Batalkan Klaim Jatah Harian' : 'Klaim Jatah Harian (35k)';
+                descClaim.innerText = "Tandai jatah harian diambil di tanggal ini";
+            }
+
             document.getElementById('modal-date-action').classList.remove('hidden');
         }
 
@@ -904,6 +953,13 @@
         function actionToggleClaim() {
             if (!window.state.selectedDateKey) return;
             const dateStr = window.state.selectedDateKey;
+            
+            // Jika mau klaim baru, pastikan saldo ada
+            if (!window.state.claimedDays[dateStr] && Number(window.state.accounts.jagoMain || 0) <= 0) {
+                alert("Tidak ada jatah harian karena saldo Kantong Utama Jago kosong atau minus!");
+                return;
+            }
+
             if (window.state.claimedDays[dateStr]) {
                 delete window.state.claimedDays[dateStr];
             } else {
@@ -937,7 +993,7 @@
             e.preventDefault();
             const title = document.getElementById('rew-title').value;
             const date = document.getElementById('rew-date').value;
-            const amount = parseFloat(document.getElementById('rew-amount').value);
+            const amount = Number(document.getElementById('rew-amount').value);
             const type = document.getElementById('rew-type').value;
             const account = document.getElementById('rew-account').value;
 
@@ -1008,7 +1064,7 @@
             }
 
             if (totalSweepAmount === 0) {
-                alert("Tidak ada sisa jatah harian yang perlu disapu.");
+                alert("Tidak ada sisa jatah harian yang perlu disapu (atau saldo kantong utama kosong).");
                 return;
             }
 
@@ -1069,7 +1125,7 @@
             document.getElementById('acc-jago-affiliate').innerText = formatRp(accs.jagoAffiliate);
             document.getElementById('acc-jago-business').innerText = formatRp(accs.jagoBusiness);
 
-            const total = (accs.mandiri || 0) + (accs.bca || 0) + (accs.jagoMain || 0) + (accs.jagoSavings || 0) + (accs.jagoBills || 0) + (accs.jagoAffiliate || 0) + (accs.jagoBusiness || 0);
+            const total = Number(accs.mandiri || 0) + Number(accs.bca || 0) + Number(accs.jagoMain || 0) + Number(accs.jagoSavings || 0) + Number(accs.jagoBills || 0) + Number(accs.jagoAffiliate || 0) + Number(accs.jagoBusiness || 0);
             document.getElementById('stat-total-assets').innerText = `Total: ${formatRp(total)}`;
         }
 
@@ -1082,6 +1138,7 @@
             const firstDay = new Date(window.state.currentYear, window.state.currentMonth, 1).getDay();
             const daysInMonth = new Date(window.state.currentYear, window.state.currentMonth + 1, 0).getDate();
             const today = new Date();
+            const jagoMainBalance = Number(window.state.accounts.jagoMain || 0);
 
             for (let i = 0; i < firstDay; i++) {
                 const emptyCell = document.createElement('div');
@@ -1090,8 +1147,6 @@
             }
 
             let monthTotalRemainder = 0;
-            const accs = window.state.accounts || {};
-            const totalAssets = (accs.mandiri || 0) + (accs.bca || 0) + (accs.jagoMain || 0) + (accs.jagoSavings || 0) + (accs.jagoBills || 0) + (accs.jagoAffiliate || 0) + (accs.jagoBusiness || 0);
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateKey = formatDateKey(window.state.currentYear, window.state.currentMonth, day);
@@ -1102,18 +1157,26 @@
                 const dayRewards = (window.state.rewardEvents || []).filter(ev => ev.date === dateKey);
                 const dayRemainder = calculateDayRemainder(dateKey);
 
-                if (isPast && !(window.state.sweptDays && window.state.sweptDays[dateKey]) && totalAssets > 0) {
+                if (isPast && !(window.state.sweptDays && window.state.sweptDays[dateKey])) {
                     monthTotalRemainder += dayRemainder;
                 }
 
                 const cell = document.createElement('div');
                 let cellClasses = "h-16 rounded-xl p-1 border flex flex-col justify-between cursor-pointer transition relative overflow-hidden ";
 
-                if (isToday) cellClasses += "border-indigo-500 bg-indigo-50/40 font-bold ";
-                else if (dayRewards.length > 0) cellClasses += "border-purple-300 bg-purple-50/70 text-purple-900 ";
-                else if (isClaimed) cellClasses += "border-emerald-200 bg-emerald-50/60 text-emerald-800 ";
-                else if (isPast) cellClasses += "border-amber-200 bg-amber-50/30 text-slate-600 ";
-                else cellClasses += "border-slate-100 bg-white hover:border-slate-200 ";
+                if (jagoMainBalance <= 0) {
+                    cellClasses += "border-slate-200 bg-slate-100 text-slate-400 opacity-75 ";
+                } else if (isToday) {
+                    cellClasses += "border-indigo-500 bg-indigo-50/40 font-bold ";
+                } else if (dayRewards.length > 0) {
+                    cellClasses += "border-purple-300 bg-purple-50/70 text-purple-900 ";
+                } else if (isClaimed) {
+                    cellClasses += "border-emerald-200 bg-emerald-50/60 text-emerald-800 ";
+                } else if (isPast) {
+                    cellClasses += "border-amber-200 bg-amber-50/30 text-slate-600 ";
+                } else {
+                    cellClasses += "border-slate-100 bg-white hover:border-slate-200 ";
+                }
 
                 cell.className = cellClasses;
                 cell.onclick = () => handleDayClick(dateKey);
@@ -1121,7 +1184,7 @@
                 let rewardTagHTML = dayRewards.length > 0 ? `<div class="bg-purple-600 text-white text-[8px] px-1 py-0.5 rounded truncate font-normal mt-0.5">✈️ ${dayRewards[0].title}</div>` : '';
 
                 let subLabelHTML = '35k';
-                if (totalAssets <= 0) {
+                if (jagoMainBalance <= 0) {
                     subLabelHTML = 'Rp 0';
                 } else if (isClaimed) {
                     if (dayRemainder > 0 && dayRemainder < 35000) {
@@ -1134,10 +1197,10 @@
                 cell.innerHTML = `
                     <div class="flex justify-between items-center text-[10px]">
                         <span class="${isToday ? 'bg-indigo-600 text-white w-4 h-4 rounded-full flex items-center justify-center' : 'text-slate-500'}">${day}</span>
-                        ${isClaimed ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>' : ''}
+                        ${isClaimed && jagoMainBalance > 0 ? '<i class="fa-solid fa-circle-check text-emerald-500 text-[11px]"></i>' : jagoMainBalance <= 0 ? '<i class="fa-solid fa-ban text-slate-400 text-[10px]"></i>' : ''}
                     </div>
                     ${rewardTagHTML}
-                    <div class="text-[9px] text-center font-medium ${isClaimed ? 'text-emerald-700' : 'text-slate-400'}">
+                    <div class="text-[9px] text-center font-medium ${isClaimed && jagoMainBalance > 0 ? 'text-emerald-700' : 'text-slate-400'}">
                         ${subLabelHTML}
                     </div>
                 `;
@@ -1171,7 +1234,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="font-bold text-purple-800">${formatRp(ev.amount)}</span>
-                        <button onclick="deleteRewardEvent(${ev.id})" class="text-rose-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
+                        <button type="button" onclick="deleteRewardEvent(${ev.id})" class="text-rose-400 hover:text-rose-600 p-1"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 `;
                 container.appendChild(item);
@@ -1230,7 +1293,7 @@
             const todayStr = new Date().toISOString().split('T')[0];
             const todayExpenses = (window.state.transactions || [])
                 .filter(t => t.type === 'OUT' && t.date === todayStr && t.category === 'MakanJajan')
-                .reduce((acc, curr) => acc + curr.amount, 0);
+                .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
             if (todayExpenses > 40000) {
                 banner.className = "rounded-2xl p-4 bg-rose-50 border border-rose-200 text-rose-800";
@@ -1238,11 +1301,11 @@
                 title.innerText = "Peringatan Boros!";
                 desc.innerText = `Pengeluaran makan/jajan hari ini (${formatRp(todayExpenses)}) melebihi Rp 40.000. Hemat sisa uang Anda!`;
                 banner.classList.remove('hidden');
-            } else if ((window.state.accounts.jagoMain || 0) < 0) {
+            } else if ((window.state.accounts.jagoMain || 0) <= 0) {
                 banner.className = "rounded-2xl p-4 bg-amber-50 border border-amber-200 text-amber-800";
                 icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-600"></i>';
-                title.innerText = "Saldo Jago Utama Menipis!";
-                desc.innerText = "Pengeluaran harian melebihi saldo Kantong Utama Jago Anda.";
+                title.innerText = "Kantong Utama Jago Kosong!";
+                desc.innerText = "Saldo Kantong Utama Jago Rp 0 atau minus. Jatah harian otomatis dinonaktifkan.";
                 banner.classList.remove('hidden');
             } else {
                 banner.classList.add('hidden');
@@ -1251,4 +1314,3 @@
     </script>
 </body>
 </html>
-```
